@@ -86,12 +86,12 @@ namespace m3
         uint32 nLights; // LITE
         uint32 refLights;
 
-        uint32 d18b;
-        uint32 d19;
         uint32 d20;
         uint32 d21;
         uint32 d22;
         uint32 d23;
+        uint32 d24;
+        uint32 d25;
 
         uint32 nJ; // MATM
         uint32 refJ;
@@ -101,8 +101,6 @@ namespace m3
         uint32 refL;
 
         
-        uint32 d24;
-        uint32 d25;
         uint32 d26;
         uint32 d27;
         uint32 d28;
@@ -111,14 +109,14 @@ namespace m3
         uint32 d31;
         uint32 d32;
         uint32 d33;
+        uint32 d34;
+        uint32 d35;
 
         uint32 nM; // PAR_
         uint32 refM;
         uint32 nN; // PARC
         uint32 refN;
         
-        uint32 d34;
-        uint32 d35;
         uint32 d36;
         uint32 d37;
         uint32 d38;
@@ -127,12 +125,12 @@ namespace m3
         uint32 d41;
         uint32 d42;
         uint32 d43;
+        uint32 d44;
+        uint32 d45;
 
         uint32 nO; // PHRB
         uint32 refO;
 
-        uint32 d44;
-        uint32 d45;
         uint32 d46;
         uint32 d47;
         uint32 d48;
@@ -145,12 +143,14 @@ namespace m3
         uint32 d55;
         uint32 d56;
         uint32 d57;
+        uint32 d58;
+        uint32 d59;
 
         uint32 nP; // IREF
         uint32 refP;
 
-        uint32 d58;
-        uint32 d59;
+        uint32 d60;
+        uint32 d61;
 
         float floats[23];
 
@@ -165,10 +165,10 @@ namespace m3
         uint32 nU; // BBSC
         uint32 refU;
 
-        uint32 d60;
-        uint32 d61;
-        float f1;
         uint32 d62;
+        uint32 d63;
+        float f1;
+        uint32 d64;
     };
 
 }
