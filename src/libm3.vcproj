@@ -45,7 +45,7 @@
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
+				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="4"
 			/>
 			<Tool
@@ -144,15 +144,15 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\filebuffer.h"
-				>
-			</File>
-			<File
-				RelativePath=".\log.h"
+				RelativePath=".\log.hpp"
 				>
 			</File>
 			<File
 				RelativePath=".\m3header.h"
+				>
+			</File>
+			<File
+				RelativePath=".\model.h"
 				>
 			</File>
 			<File
@@ -176,11 +176,15 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\filebuffer.cpp"
+				RelativePath=".\log.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\log.cpp"
+				RelativePath=".\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\model.cpp"
 				>
 			</File>
 		</Filter>

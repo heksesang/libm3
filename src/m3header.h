@@ -15,19 +15,19 @@ namespace m3
 {
     struct Reference 
     {
-        /*0x00*/ uint32 entries;
-        /*0x04*/ uint32 referenceid;
+        /*0x00*/ uint32 nEntries;
+        /*0x04*/ uint32 ref;
     };
 
     struct ReferenceEntry
     {
         /*0x00*/ char id[4];
         /*0x04*/ uint32 offset;
-        /*0x08*/ uint32 entries;
-        /*0x0C*/ uint32 d1;
+        /*0x08*/ uint32 nEntries;
+        /*0x0C*/ uint32 type;
     };
 
-    struct ModelHeader
+    struct MD33
     {
         /*0x00*/ char id[4];
         /*0x04*/ uint32 ofsRefs;
@@ -35,140 +35,314 @@ namespace m3
         /*0x0C*/ Reference MODL;
     };
 
-    struct MODL
+    struct MODL_23
     {
-        uint32 nName;
-        uint32 refName;
-        uint32 d1; // Flags?
-        uint32 nAnimations; // SEQS (88 byte)
-        uint32 refAnimations;
-        uint32 nB; // STC_ (140 byte)
-        uint32 refB;
-        uint32 nC; // STG_ (16 byte)
-        uint32 refC;
-        uint32 d2;
-        uint32 d3;
-        uint32 d4;
-        uint32 nD; // STS_ (24 byte)
-        uint32 refD;
-        uint32 nBones;
-        uint32 refBones;
-        uint32 d5;
-        uint32 d6;
-        uint32 nF; // uint8
-        uint32 refF;
-        uint32 nG; // DIV_ (36 byte)
-        uint32 refG;
-        uint32 nH; // uint16
-        uint32 refH;
+        /*0x00*/ Reference name;
+        /*0x08*/ uint32 version;
+        /*0x0C*/ Reference SEQS;
+        /*0x14*/ Reference STC;
+        /*0x1C*/ Reference STG;
+        /*0x24*/ uint32 d2;
+        /*0x28*/ uint32 d3;
+        /*0x2C*/ uint32 d4;
+        /*0x30*/ Reference STS;
+        /*0x38*/ Reference BONE;
+        /*0x40*/ uint32 d5;
+        /*0x44*/ uint32 d6;
+        /*0x48*/ Reference A; // uint8
+        /*0x50*/ Reference DIV;
+        /*0x58*/ Reference B; // uint16
 
-        Vec3D extents[2];
-        float radius;
+        /*0x60*/ Vec3D extents[2];
+        /*0x78*/ float radius;
 
-        uint32 d7;
-        uint32 d8;
-        uint32 d9;
-        uint32 d10;
-        uint32 d11;
-        uint32 d12;
-        uint32 d13;
-        uint32 d14;
-        uint32 d15;
-        uint32 d16;
-        uint32 d17;
-        uint32 d18;
-        uint32 d19;
+        /*0x7C*/ uint32 d7;
+        /*0x80*/ uint32 d8;
+        /*0x84*/ uint32 d9;
+        /*0x88*/ uint32 d10;
+        /*0x8C*/ uint32 d11;
+        /*0x90*/ uint32 d12;
+        /*0x94*/ uint32 d13;
+        /*0x98*/ uint32 d14;
+        /*0x9C*/ uint32 d15;
+        /*0xA0*/ uint32 d16;
+        /*0xA4*/ uint32 d17;
+        /*0xA8*/ uint32 d18;
+        /*0xAC*/ uint32 d19;
+
+        /*0xB0*/ Reference ATT;
+        /*0xB8*/ Reference C; // uint16
+        /*0xC0*/ Reference LITE;
+        /*0xC8*/ Reference SHBX;
+        /*0xD0*/ Reference CAM;
+        /*0xD8*/ Reference D; // uint16
+        /*0xE0*/ Reference MATM;
+        /*0xE8*/ Reference MAT;
+        /*0xF0*/ Reference DIS;
+        /*0xF8*/ Reference CMP;
+
+        /*0x100*/ Reference TER;
+        /*0x108*/ Reference VOL;
+        /*0x110*/ uint32 d21;
+        /*0x114*/ uint32 d22;
+        /*0x118*/ Reference CREP;
+        /*0x120*/ Reference PAR;
+        /*0x128*/ Reference PARC;
+        /*0x130*/ Reference RIB;
+        /*0x138*/ Reference PROJ;
+        /*0x140*/ Reference FOR;
+        /*0x148*/ Reference WRP;
+        /*0x150*/ uint32 d24;
+        /*0x154*/ uint32 d25;
+        /*0x158*/ Reference PHRB;
+        /*0x160*/ uint32 d27;
+        /*0x164*/ uint32 d28;
+        /*0x168*/ uint32 d29;
+        /*0x16C*/ uint32 d30;
+        /*0x170*/ uint32 d32;
+        /*0x174*/ uint32 d33;
+        /*0x178*/ Reference IKJT;
+        /*0x180*/ uint32 d35;
+        /*0x184*/ uint32 d36;
+        /*0x188*/ Reference PATU;
+        /*0x190*/ Reference TRGD;
+        /*0x198*/ Reference IREF;
+        /*0x1A0*/ Reference E; // uint32
+        /*0x1A8*/ float matrix[4][4];
+        /*0x1E8*/ Vec3D extent[2];
+        /*0x200*/ float rad;
+        /*0x204*/ Reference SSGS;
+        /*0x20C*/ Reference ATVL;
+        /*0x210*/ uint32 d61;
+        /*0x214*/ Reference F; // uint16
+        /*0x21C*/ Reference G; // uint16
+        /*0x224*/ Reference BBSC;
+        /*0x22C*/ Reference TMD;
+        /*0x234*/ uint32 d62;
+        /*0x238*/ uint32 d63;
+        /*0x23C*/ uint32 d64;
+    };
+
+    struct MODL_20
+    {
+        /*0x00*/ Reference name;
+        /*0x08*/ uint32 version;
+        /*0x0C*/ Reference SEQS;
+        /*0x14*/ Reference STC;
+        /*0x1C*/ Reference STG;
+        /*0x24*/ uint32 d2;
+        /*0x28*/ uint32 d3;
+        /*0x2C*/ uint32 d4;
+        /*0x30*/ Reference STS;
+        /*0x38*/ Reference BONE;
+        /*0x44*/ uint32 d6;
+        /*0x48*/ Reference A; // uint8
+        /*0x50*/ Reference DIV;
+        /*0x58*/ Reference B; // uint16
+
+        /*0x60*/ Vec3D extents[2];
+        /*0x78*/ float radius;
+
+        /*0x7C*/ uint32 d7;
+        /*0x80*/ uint32 d8;
+        /*0x84*/ uint32 d9;
+        /*0x88*/ uint32 d10;
+        /*0x8C*/ uint32 d11;
+        /*0x90*/ uint32 d12;
+        /*0x94*/ uint32 d13;
+        /*0x98*/ uint32 d14;
+        /*0x9C*/ uint32 d15;
+        /*0xA0*/ uint32 d16;
+        /*0xA4*/ uint32 d17;
+        /*0xA8*/ uint32 d18;
+        /*0xAC*/ uint32 d19;
         
-        uint32 nAttachments; // ATT_
-        uint32 refAttachments;
-        uint32 nI; // uint16
-        uint32 refI;
-        uint32 nLights; // LITE
-        uint32 refLights;
+        /*0xB0*/ Reference ATT;
+        /*0xB8*/ Reference C; // uint16
+        /*0xC0*/ Reference LITE;
+        /*0xC8*/ Reference CAM;
+        /*0xD0*/ Reference D; // uint16
+        /*0xD8*/ Reference MATM;
+        /*0xE0*/ Reference MAT;
+        /*0xE8*/ Reference DIS;
+        /*0xF0*/ Reference CMP;
+        /*0xF8*/ Reference TER;
 
-        uint32 d20;
-        uint32 d21;
-        uint32 d22;
-        uint32 d23;
-        uint32 d24;
-        uint32 d25;
-
-        uint32 nJ; // MATM
-        uint32 refJ;
-        uint32 nK; // MAT_
-        uint32 refK;
-        uint32 nL; // DIS_
-        uint32 refL;
-
+        /*0x100*/ uint32 d20;
+        /*0x104*/ uint32 d21;
+        /*0x108*/ uint32 d22;
+        /*0x10C*/ uint32 d23;
+        /*0x110*/ Reference CREP;
+        /*0x118*/ Reference PAR;
+        /*0x120*/ Reference PARC;
+        /*0x128*/ Reference RIB;
+        /*0x130*/ Reference PROJ;
+        /*0x138*/ Reference FOR;
+        /*0x140*/ uint32 d25;
+        /*0x144*/ uint32 d26;
+        /*0x148*/ uint32 d27;
+        /*0x14C*/ uint32 d28;
+        /*0x150*/ Reference PHRB;
+        /*0x158*/ uint32 d30;
+        /*0x15C*/ uint32 d31;
+        /*0x160*/ uint32 d32;
+        /*0x164*/ uint32 d33;
+        /*0x168*/ uint32 d34;
+        /*0x16C*/ uint32 d35;
+        /*0x170*/ Reference IKJT;
+        /*0x178*/ uint32 d36;
+        /*0x17C*/ uint32 d37;
+        /*0x180*/ Reference PATU;
+        /*0x188*/ Reference TRGD;
+        /*0x190*/ Reference IREF;
+        /*0x198*/ Reference E; // int32
         
-        uint32 d26;
-        uint32 d27;
-        uint32 d28;
-        uint32 d29;
-        uint32 d30;
-        uint32 d31;
-        uint32 d32;
-        uint32 d33;
-        uint32 d34;
-        uint32 d35;
+        /*0x1A0*/ float matrix[4][4];
+        /*0x1E0*/ Vec3D extent[2];
+        /*0x1F8*/ float rad;
 
-        uint32 nM; // PAR_
-        uint32 refM;
-        uint32 nN; // PARC
-        uint32 refN;
-        
-        uint32 d36;
-        uint32 d37;
-        uint32 d38;
-        uint32 d39;
-        uint32 d40;
-        uint32 d41;
-        uint32 d42;
-        uint32 d43;
-        uint32 d44;
-        uint32 d45;
+        /*0x1FC*/ Reference SSGS;
+        /*0x204*/ uint32 d38;
+        /*0x208*/ uint32 d39;
+        /*0x20C*/ Reference BBSC;
 
-        uint32 nO; // PHRB
-        uint32 refO;
+        /*0x214*/ uint32 d40;
+        /*0x218*/ uint32 d41;
+        /*0x21C*/ uint32 d42;
+        /*0x220*/ uint32 d43;
+        /*0x224*/ uint32 d44;
+    };
 
-        uint32 d46;
-        uint32 d47;
-        uint32 d48;
-        uint32 d49;
-        uint32 d50;
-        uint32 d51;
-        uint32 d52;
-        uint32 d53;
-        uint32 d54;
-        uint32 d55;
-        uint32 d56;
-        uint32 d57;
-        uint32 d58;
-        uint32 d59;
+    struct BONE
+    {
+        int32 d1; // Keybone?
+        Reference name;
+        uint32 flags;
+        int16 parent;
+        int16 s1;
 
-        uint32 nP; // IREF
-        uint32 refP;
+        float floats[34];
+    };
 
-        uint32 d60;
-        uint32 d61;
+    struct DIV
+    {
+        /*0x00*/ Reference U16;
+        /*0x08*/ Reference REGN;
+        /*0x10*/ Reference BAT;
+        /*0x18*/ Reference MSEC;
+    };
 
-        float floats[23];
+    struct CAM
+    {
+        /*0x00*/ int32 d1;
+        /*0x04*/ Reference name;
+        /*0x0C*/ uint16 flags1;
+        /*0x0E*/ uint16 flags2;
+    };
 
-        uint32 nQ; // SSGS
-        uint32 refQ;
-        uint32 nR; // ATVL
-        uint32 refR;
-        uint32 nS; // uint16
-        uint32 refS;
-        uint32 nT; // uint16
-        uint32 refT;
-        uint32 nU; // BBSC
-        uint32 refU;
+    struct EVNT
+    {
+        /*0x00*/ Reference name;
+        /*0x08*/ int16 unk1[4];
+        /*0x10*/ float matrix[4][4];
+        /*0x50*/ int32 unk2[4];
+    };
 
-        uint32 d62;
-        uint32 d63;
+    struct ATT
+    {
+        /*0x00*/ int32 unk;
+        /*0x04*/ Reference name;
+        /*0x0C*/ int32 bone;
+    };
+
+    struct PHSH
+    {
+        float m[4][4];
         float f1;
-        uint32 d64;
+        float f2;
+        Reference refs[5];
+        float f3;
+    };
+
+    struct SEQS
+    {
+        /*0x00*/ int32 d1;
+        /*0x04*/ int32 d2;
+        /*0x08*/ Reference name;
+        /*0x10*/ int32 d3;
+        /*0x14*/ uint32 length;
+        /*0x18*/ int32 d4;
+        /*0x1C*/ uint32 flags;
+        /*0x20*/ int32 unk[5];
+        /*0x34*/ Vec3D extents[2];
+        /*0x4C*/ float radius;
+        /*0x50*/ int32 d5;
+        /*0x54*/ int32 d6;
+    };
+
+    struct STC
+    {
+        /*0x00*/ Reference name;
+        /*0x08*/ uint16 s1;
+        /*0x0A*/ uint16 s2;
+        /*0x0C*/ uint16 s3;
+        /*0x0E*/ uint16 s4;
+        /*0x12*/ Reference unk2; // uint32
+        /*0x1A*/ Reference unk3; // uint32
+        /*0x22*/ uint32 d3;
+        /*0x24*/ Reference evt;
+        /*0x2C*/ Reference unk4[11]; // Seems to be transformation data
+        /*0x84*/ Reference bnds;
+    };
+
+    struct STS
+    {
+        /*0x00*/ Reference unk1; // uint32
+        /*0x08*/ int32 unk[3];
+        /*0x14*/ int16 s1;
+        /*0x16*/ int16 s2;
+    };
+
+    struct STG
+    {
+        /*0x00*/ Reference name;
+        /*0x08*/ Reference stcID;
+    };
+    
+    struct SD
+    {
+        /*0x00*/ Reference timeline;
+        /*0x08*/ uint32 flags;
+        /*0x0C*/ uint32 length;
+        /*0x10*/ Reference data;
+    };
+
+    struct BNDS
+    {
+        /*0x00*/ Vec3D extents1[2];
+        /*0x18*/ float radius1;
+        /*0x1C*/ Vec3D extents2[2];
+        /*0x34*/ float radius2;
+    };
+
+    struct VEC2
+    {
+        float x, y;
+    };
+
+    struct VEC3
+    {
+        float x, y, z;
+    };
+
+    struct VEC4
+    {
+        float x, y, z, w;
+    };
+
+    struct QUAT
+    {
+        float x, y, z, w;
     };
 
 }

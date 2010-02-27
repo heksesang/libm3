@@ -1,101 +1,130 @@
-#include "log.h"
+// This program is free software; you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation; either version 2, or (at your option) any
+// later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
-/********************************
-*                               *
-*         CONSTRUCTORS          *
-*                               *
-********************************/
-Log::Log()
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <windows.h>
+#include <time.h>
+#include <sys/timeb.h>
+
+#include "log.hpp"
+
+FILE *log = NULL;
+
+void LogPrintf(int Level, const char *format, ...)
 {
-    fopen_s(&log_file, "log.txt", "w");
+	va_list args;
+	char buffer[2048];
+	
+	va_start(args, format);
+	vsnprintf_s(buffer, 2047, 2047, format, args);
+	va_end(args);
+	
+	if (log == NULL)
+	{
+		fopen_s(&log, "libm3.log", "w");
+	}
+	
+	// Create log message
+	std::string Log = StringFromFormat("%s %s", GetTimeFormatted().c_str(), buffer);
+	fwrite(Log.c_str(), 1, strlen(Log.c_str()), log);
+	fflush(log);
+	LogConsole(Level, Log);
 }
-Log::~Log()
+
+void LogConsole(int Level, std::string s)
 {
-    fclose(log_file);
+	HWND hWnd = GetConsoleWindow();
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	if (!hWnd)
+	{
+		// Create console
+		AllocConsole();	
+		SetConsoleTitleA("libm3");
+		// Set console size
+		int iWidth = 120, iHeight = 50;
+		COORD Co = {iWidth, 1000};
+		BOOL SB = SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), Co);
+		MoveWindow(GetConsoleWindow(), 0,0, 3000*8,iHeight*14, true);
+	}
+
+	WORD Color;
+	switch (Level)
+	{
+	case LYELLOW: // light yellow
+		Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+		break;
+	case LGREEN: // light green
+		Color = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+		break;
+	default: // off-white
+		Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+		break;
+	}
+
+	SetConsoleTextAttribute(hConsole, Color);
+	DWORD cCharsWritten;
+	if(hConsole)
+		WriteConsoleA(hConsole, s.c_str(), strlen(s.c_str()), &cCharsWritten, NULL);
 }
 
-/********************************
-*                               *
-*       STATIC FUNCTIONS        *
-*                               *
-********************************/
-Log& Log::Instance()
+
+// Return the current time formatted as Minutes:Seconds:Milliseconds in the form 00:00:000
+std::string GetTimeFormatted()
 {
-    static Log log;
-    return log;
+	time_t sysTime;
+	struct tm * gmTime = NULL;
+	char formattedTime[13];
+	char tmp[13];
+
+	time(&sysTime);
+	localtime_s(gmTime, &sysTime);
+
+	strftime(tmp, 6, "%M:%S", gmTime);
+
+	// Now add the milliseconds
+	struct timeb tp;
+	(void)::ftime(&tp);
+	sprintf_s(formattedTime, 13, "%s:%03i", tmp, tp.millitm);
+
+	return std::string(formattedTime);
 }
 
-void Log::SetLevel(int level)
+// Printf to string
+std::string StringFromFormat(const char* format, ...)
 {
-    Log& log = Log::Instance();
-    log.level = level;
-}
+	int writtenCount = -1;
+	int newSize = (int)strlen(format) + 4;
+	char *buf = 0;
+	va_list args;
+	while (writtenCount < 0)
+	{
+		delete [] buf;
+		buf = new char[newSize + 1];
+	
+	    va_start(args, format);
+		writtenCount = vsnprintf_s(buf, newSize + 1, newSize, format, args);
+		va_end(args);
+		if (writtenCount >= (int)newSize) {
+			writtenCount = -1;
+		}
+		newSize *= 2;
+	}
 
-void Log::SetFlags(int flags)
-{
-    Log& log = Log::Instance();
-
-    log.flags = 0;
-    log.flags |= flags;
-}
-
-int Log::Write(int level, const char* format, ...)
-{
-    Log& log = Log::Instance();
-
-    if(level >= log.level)
-    {
-        va_list args;
-        va_start(args, format);
-
-        char szBuf[1024];
-
-        time_t t;
-        tm timeptr;
-
-        time(&t);
-        gmtime_s(&timeptr, &t);
-
-        strftime(szBuf, 1024, "[%H:%M:%S] ", &timeptr);
-
-        switch(level)
-        {
-        case LL_DEBUG:
-            sprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), "debug: ");
-            vsprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), format, args);
-            break;
-
-        case LL_INFO:
-            sprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), "info: ");
-            vsprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), format, args);
-            break;
-
-        case LL_WARNING:
-            sprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), "warning: ");
-            vsprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), format, args);
-            break;
-
-        case LL_ERROR:
-            sprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), "error: ");
-            vsprintf_s(&szBuf[strlen(szBuf)], 1024 - strlen(szBuf), format, args);
-            break;
-
-        default:
-            break;
-        }
-
-        int error = 0;
-
-        if((log.flags & LOG_CONSOLE) == LOG_CONSOLE)
-            std::cout << szBuf;
-        if((log.flags & LOG_FILE) == LOG_FILE)
-        {
-            fwrite(szBuf, sizeof(char), strnlen(szBuf, 1024), log.log_file);
-            error = fflush(log.log_file);
-        }
-
-        return error;
-    }
-
-    return -1;
+	buf[writtenCount] = '\0';
+	std::string temp = buf;
+	return temp;
 }
