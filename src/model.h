@@ -16,9 +16,6 @@ namespace m3
     class Model
     {
         static std::map<std::string, Model> m_models;
-        static int LoadModel(std::string filename);
-        static int UnloadModel(std::string filename);
-        static Model& GetModel(std::string name);
         
         char* m_buf;
         int   m_bufSize;
@@ -33,8 +30,17 @@ namespace m3
 
         Model& operator=(const Model& m);
 
+        // Static functions
+        static Model* LoadModel(std::string filename);
+        static void   UnloadModel(std::string filename);
+        static Model* GetModel(std::string filename);
+
+        // Non-static functions
         template <typename T>
         T* GetEntries(Reference ref);
+
+        MD33* GetHeader();
+        ReferenceEntry* GetRefs();
     };
 
     template <typename T>

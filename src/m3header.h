@@ -35,7 +35,7 @@ namespace m3
         /*0x0C*/ Reference MODL;
     };
 
-    struct MODL_23
+    struct MODL23
     {
         /*0x00*/ Reference name;
         /*0x08*/ uint32 version;
@@ -123,7 +123,7 @@ namespace m3
         /*0x23C*/ uint32 d64;
     };
 
-    struct MODL_20
+    struct MODL20
     {
         /*0x00*/ Reference name;
         /*0x08*/ uint32 version;
