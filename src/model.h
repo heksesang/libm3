@@ -34,6 +34,8 @@ namespace m3
         static Model* LoadModel(std::string filename);
         static void   UnloadModel(std::string filename);
         static Model* GetModel(std::string filename);
+        
+        static int Convert(std::string filename);
 
         // Non-static functions
         template <typename T>

@@ -48,7 +48,7 @@ namespace m3
         /*0x30*/ Reference STS;
         /*0x38*/ Reference BONE;
         /*0x40*/ uint32 d5;
-        /*0x44*/ uint32 d6;
+        /*0x44*/ uint32 flags;
         /*0x48*/ Reference A; // uint8
         /*0x50*/ Reference DIV;
         /*0x58*/ Reference B; // uint16
@@ -135,7 +135,8 @@ namespace m3
         /*0x2C*/ uint32 d4;
         /*0x30*/ Reference STS;
         /*0x38*/ Reference BONE;
-        /*0x44*/ uint32 d6;
+        /*0x44*/ uint32 d5;
+        /*0x44*/ uint32 flags;
         /*0x48*/ Reference A; // uint8
         /*0x50*/ Reference DIV;
         /*0x58*/ Reference B; // uint16
@@ -222,6 +223,49 @@ namespace m3
         int16 s1;
 
         float floats[34];
+    };
+
+    struct Vertex1 // 36 byte
+    {
+        Vec3D pos;
+        char boneWeight[4];
+        char boneIndex[4];
+        char normal[4];  //normal_x = (float)normal[0]/255.0f...
+        uint16 uv[2];
+        uint32 d1;
+        char tangents[4];
+    };
+
+    struct Vertex2 // 32 byte
+    {
+        Vec3D pos;
+        char boneWeight[4];
+        char boneIndex[4];
+        char normal[4];  //normal_x = (float)normal[0]/255.0f...
+        uint16 uv[2];
+        char tangents[4];
+    };
+
+    struct MATM
+    {
+        uint32 d1;
+        uint32 d2; // Index into MAT-table?
+    };
+
+    struct MAT
+    {
+        Reference name;
+        int ukn1[8];
+        float x, y;  //always 1.0f
+        Reference layers[13];
+        int ukn2[15];
+    };
+
+    struct LAYR
+    {
+        int unk;
+        Reference name;
+        int unk2[85];
     };
 
     struct DIV

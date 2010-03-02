@@ -5,6 +5,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libm3", "libm3.vcproj", "{F
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcproj", "{3A804321-9397-42E4-9953-534526E8D597}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ObjConv", "ObjConv\ObjConv.vcproj", "{AA6BADDC-61C5-4D61-ABD1-645F2ADB88FF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -19,6 +21,10 @@ Global
 		{3A804321-9397-42E4-9953-534526E8D597}.Debug|Win32.Build.0 = Debug|Win32
 		{3A804321-9397-42E4-9953-534526E8D597}.Release|Win32.ActiveCfg = Release|Win32
 		{3A804321-9397-42E4-9953-534526E8D597}.Release|Win32.Build.0 = Release|Win32
+		{AA6BADDC-61C5-4D61-ABD1-645F2ADB88FF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AA6BADDC-61C5-4D61-ABD1-645F2ADB88FF}.Debug|Win32.Build.0 = Debug|Win32
+		{AA6BADDC-61C5-4D61-ABD1-645F2ADB88FF}.Release|Win32.ActiveCfg = Release|Win32
+		{AA6BADDC-61C5-4D61-ABD1-645F2ADB88FF}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
