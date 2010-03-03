@@ -60,18 +60,18 @@ namespace m3
     {
         /*0x00*/ Reference name;
         /*0x08*/ uint32 version;
-        /*0x0C*/ Reference SEQS;
-        /*0x14*/ Reference STC;
-        /*0x1C*/ Reference STG;
+        /*0x0C*/ Reference sequenceHeader;
+        /*0x14*/ Reference sequenceData;
+        /*0x1C*/ Reference sequenceLookup;
         /*0x24*/ uint32 d2;
         /*0x28*/ uint32 d3;
         /*0x2C*/ uint32 d4;
         /*0x30*/ Reference STS;
-        /*0x38*/ Reference BONE;
+        /*0x38*/ Reference bones;
         /*0x40*/ uint32 d5;
         /*0x44*/ uint32 flags;
-        /*0x48*/ Reference A; // uint8
-        /*0x50*/ Reference DIV;
+        /*0x48*/ Reference vertexData; // uint8
+        /*0x50*/ Reference views;
         /*0x58*/ Reference B; // uint16
 
         /*0x60*/ Vec3D extents[2];
@@ -91,14 +91,14 @@ namespace m3
         /*0xA8*/ uint32 d18;
         /*0xAC*/ uint32 d19;
 
-        /*0xB0*/ Reference ATT;
-        /*0xB8*/ Reference C; // uint16
-        /*0xC0*/ Reference LITE;
+        /*0xB0*/ Reference attachments;
+        /*0xB8*/ Reference attachmentLookup; // uint16
+        /*0xC0*/ Reference lights;
         /*0xC8*/ Reference SHBX;
-        /*0xD0*/ Reference CAM;
+        /*0xD0*/ Reference cameras;
         /*0xD8*/ Reference D; // uint16
-        /*0xE0*/ Reference MATM;
-        /*0xE8*/ Reference MAT;
+        /*0xE0*/ Reference materialLookup;
+        /*0xE8*/ Reference materials;
         /*0xF0*/ Reference DIS;
         /*0xF8*/ Reference CMP;
 
@@ -148,18 +148,18 @@ namespace m3
     {
         /*0x00*/ Reference name;
         /*0x08*/ uint32 version;
-        /*0x0C*/ Reference SEQS;
-        /*0x14*/ Reference STC;
-        /*0x1C*/ Reference STG;
+        /*0x0C*/ Reference sequenceHeader;
+        /*0x14*/ Reference sequenceData;
+        /*0x1C*/ Reference sequenceLookup;
         /*0x24*/ uint32 d2;
         /*0x28*/ uint32 d3;
         /*0x2C*/ uint32 d4;
         /*0x30*/ Reference STS;
-        /*0x38*/ Reference BONE;
+        /*0x38*/ Reference bones;
         /*0x44*/ uint32 d5;
         /*0x44*/ uint32 flags;
-        /*0x48*/ Reference A; // uint8
-        /*0x50*/ Reference DIV;
+        /*0x48*/ Reference vertexData; // uint8
+        /*0x50*/ Reference views;
         /*0x58*/ Reference B; // uint16
 
         /*0x60*/ Vec3D extents[2];
@@ -179,13 +179,13 @@ namespace m3
         /*0xA8*/ uint32 d18;
         /*0xAC*/ uint32 d19;
         
-        /*0xB0*/ Reference ATT;
-        /*0xB8*/ Reference C; // uint16
-        /*0xC0*/ Reference LITE;
-        /*0xC8*/ Reference CAM;
+        /*0xB0*/ Reference attachments;
+        /*0xB8*/ Reference attachmentLookup; // uint16
+        /*0xC0*/ Reference lights;
+        /*0xC8*/ Reference cameras;
         /*0xD0*/ Reference D; // uint16
-        /*0xD8*/ Reference MATM;
-        /*0xE0*/ Reference MAT;
+        /*0xD8*/ Reference materialLookup;
+        /*0xE0*/ Reference materials;
         /*0xE8*/ Reference DIS;
         /*0xF0*/ Reference CMP;
         /*0xF8*/ Reference TER;
@@ -286,15 +286,24 @@ namespace m3
     {
         int unk;
         Reference name;
-        int unk2[85];
+        float unk2[85];
     };
 
     struct DIV
     {
-        /*0x00*/ Reference U16;
-        /*0x08*/ Reference REGN;
+        /*0x00*/ Reference faces; // U16
+        /*0x08*/ Reference regions; // REGN - Region
         /*0x10*/ Reference BAT;
         /*0x18*/ Reference MSEC;
+    };
+
+    struct Region {
+        uint32 unk;
+        uint16 ofsVertices;
+        uint16 nVertices;
+        uint32 ofsIndices;
+        uint32 nIndices; // reference into DIV.faces
+        uint8 unknown[12];
     };
 
     struct CAM

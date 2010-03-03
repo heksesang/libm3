@@ -140,7 +140,9 @@ int Model::Convert(std::string filename)
 
     Vertex1* pVerts1 = NULL;
     Vertex2* pVerts2 = NULL;
-    DIV* geosets = NULL;
+    
+    DIV* views = NULL;
+    Region* regions = NULL;
     uint16* faces = NULL;
 
     uint32 nVertices = 0;
@@ -161,18 +163,16 @@ int Model::Convert(std::string filename)
         {
             if( (pMODL20->flags & 0x40000) != 0 ) // Has extra 4 byte
             {
-                pVerts1 = pModel->GetEntries<Vertex1>(pMODL20->A);
-                nVertices = pMODL20->A.nEntries/sizeof(Vertex1);
+                pVerts1 = pModel->GetEntries<Vertex1>(pMODL20->vertexData);
+                nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex1);
             }
             else
             {
-                pVerts2 = pModel->GetEntries<Vertex2>(pMODL20->A);
-                nVertices = pMODL20->A.nEntries/sizeof(Vertex2);
+                pVerts2 = pModel->GetEntries<Vertex2>(pMODL20->vertexData);
+                nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex2);
             }
         }
-        geosets = pModel->GetEntries<DIV>( pMODL20->DIV );
-        faces = pModel->GetEntries<uint16>( geosets->U16 );
-        nFaces = geosets->U16.nEntries;
+        views = pModel->GetEntries<DIV>( pMODL20->views );
         break;
 
     case 23:
@@ -181,23 +181,25 @@ int Model::Convert(std::string filename)
         {
             if( (pMODL23->flags & 0x40000) != 0 ) // Has extra 4 byte
             {
-                pVerts1 = pModel->GetEntries<Vertex1>(pMODL23->A);
-                nVertices = pMODL23->A.nEntries/sizeof(Vertex1);
+                pVerts1 = pModel->GetEntries<Vertex1>(pMODL23->vertexData);
+                nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex1);
             }
             else
             {
-                pVerts2 = pModel->GetEntries<Vertex2>(pMODL23->A);
-                nVertices = pMODL23->A.nEntries/sizeof(Vertex2);
+                pVerts2 = pModel->GetEntries<Vertex2>(pMODL23->vertexData);
+                nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex2);
             }
         }
-        geosets = pModel->GetEntries<DIV>( pMODL23->DIV );
-        faces = pModel->GetEntries<uint16>( geosets->U16 );
-        nFaces = geosets->U16.nEntries;
+        views = pModel->GetEntries<DIV>( pMODL23->views );
         break;
 
     default:
         return -1;
     }
+
+    regions = pModel->GetEntries<Region>( views->regions );
+    faces = pModel->GetEntries<uint16>( views->faces );
+    nFaces = views->faces.nEntries;
 
     // Write vertices
     for(uint32 i = 0; i < nVertices; i++)
@@ -218,16 +220,16 @@ int Model::Convert(std::string filename)
     {
         if(pVerts1)
         {
-            float u = pVerts1[i].uv[0] > 2046 ? float(pVerts1[i].uv[0])/65536.0f : float(pVerts1[i].uv[0])/2046.0f;
-            float v = pVerts1[i].uv[1] > 2046 ? float(pVerts1[i].uv[1])/65536.0f : float(pVerts1[i].uv[1])/2046.0f;
-            fprintf_s(f, "vt %f %f\n", u, v);
+            float u = pVerts1[i].uv[0] > 2047 ? float(pVerts1[i].uv[0])/65535.0f : float(pVerts1[i].uv[0])/2047.0f;
+            float v = pVerts1[i].uv[1] > 2047 ? float(pVerts1[i].uv[1])/65535.0f : float(pVerts1[i].uv[1])/2047.0f;
+            fprintf_s(f, "vt %f %f\n", u, 1-v);
         }
 
         if(pVerts2)
         {
-            float u = pVerts2[i].uv[0] > 2046 ? float(pVerts2[i].uv[0])/65532.0f : float(pVerts2[i].uv[0])/2046.0f;
-            float v = pVerts2[i].uv[1] > 2046 ? float(pVerts2[i].uv[1])/65532.0f : float(pVerts2[i].uv[1])/2046.0f;
-            fprintf_s(f, "vt %f %f\n", u, v);
+            float u = pVerts2[i].uv[0] > 2047 ? float(pVerts2[i].uv[0])/65535.0f : float(pVerts2[i].uv[0])/2047.0f;
+            float v = pVerts2[i].uv[1] > 2047 ? float(pVerts2[i].uv[1])/65535.0f : float(pVerts2[i].uv[1])/2047.0f;
+            fprintf_s(f, "vt %f %f\n", u, 1-v);
         }
     }
     
@@ -237,28 +239,34 @@ int Model::Convert(std::string filename)
         if(pVerts1)
         {
             Vec3D norm;
-            norm.x = (float) pVerts1[i].normal[0]/255.0f;
-            norm.y = (float) pVerts1[i].normal[1]/255.0f;
-            norm.z = (float) pVerts1[i].normal[2]/255.0f;
+            float w = (float) pVerts1[i].normal[3];
+            norm.x = (float) pVerts1[i].normal[0]/w;
+            norm.y = (float) pVerts1[i].normal[1]/w;
+            norm.z = (float) pVerts1[i].normal[2]/w;
             fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
         }
 
         if(pVerts2)
         {
             Vec3D norm;
-            norm.x = (float) pVerts2[i].normal[0]/255.0f;
-            norm.y = (float) pVerts2[i].normal[1]/255.0f;
-            norm.z = (float) pVerts2[i].normal[2]/255.0f;
+            float w = (float) pVerts2[i].normal[3];
+            norm.x = (float) pVerts2[i].normal[0]/w;
+            norm.y = (float) pVerts2[i].normal[1]/w;
+            norm.z = (float) pVerts2[i].normal[2]/w;
             fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
         }
     }
 
-    // Write faces
-    for(uint32 i = 0; i < nFaces; i += 3)
+    // Write geosets
+    for(uint32 i = 0; i < views->regions.nEntries; i++)
     {
-        fprintf_s(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n", faces[i]+1, faces[i]+1, faces[i]+1,
-                                                       faces[i+1]+1, faces[i+1]+1, faces[i+1]+1,
-                                                       faces[i+2]+1, faces[i+2]+1, faces[i+2]+1);
+        fprintf_s(f, "g %s %d\n", "geoset", i);
+        for(uint32 j = regions[i].ofsIndices; j < (regions[i].ofsIndices + regions[i].nIndices); j +=3)
+        {
+            fprintf_s(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n", faces[j]+1, faces[j]+1, faces[j]+1,
+                                                           faces[j+1]+1, faces[j+1]+1, faces[j+1]+1,
+                                                           faces[j+2]+1, faces[j+2]+1, faces[j+2]+1);
+        }
     }
 
     fclose(f);

@@ -55,14 +55,18 @@ int main(int argc, char* argv[])
         MODL20* pMODL20 = NULL;
         MODL23* pMODL23 = NULL;
 
+        DIV* view = NULL;
+
         switch(pRefs[pHead->MODL.ref].type)
         {
         case 20:
             pMODL20 = pModel->GetEntries<MODL20>(pHead->MODL);
+            view = pModel->GetEntries<DIV>(pMODL20->views);
             break;
 
         case 23:
             pMODL23 = pModel->GetEntries<MODL23>(pHead->MODL);
+            view = pModel->GetEntries<DIV>(pMODL23->views);
             break;
 
         default:

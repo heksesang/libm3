@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 {
     if(argc == 1)
     {
-        cout << "No args supplied" << endl;
+        cout << "ERROR: No args supplied!" << endl;
         return -1;
     }
 
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 
     if( !exists(p) )
     {
-        cout << "Invalid filepath" << endl;
+        cout << "ERROR: Invalid filepath!" << endl;
         return -1;
     }
 
@@ -54,14 +54,16 @@ int main(int argc, char* argv[])
 
             error = Model::Convert( iter->path().string() );
             if(error)
-                cout << "Conversion failed for file: " << iter->path().string() << endl;
+                cout << "Conversion failed: " << iter->path().string() << endl;
+            else
+                cout << "Conversion succeeded: " << iter->path().string() << endl;
         }
     }
     else
     {
         if( p.extension().compare(".m3") )
         {
-            cout << "This is no .m3 file" << endl;
+            cout << "ERROR! Wrong file format!" << endl;
             return -1;
         }
 
