@@ -240,9 +240,9 @@ int Model::Convert(std::string filename)
         {
             Vec3D norm;
             float w = (float) pVerts1[i].normal[3];
-            norm.x = (float) pVerts1[i].normal[0]/w;
-            norm.y = (float) pVerts1[i].normal[1]/w;
-            norm.z = (float) pVerts1[i].normal[2]/w;
+            norm.x = (float) pVerts1[i].normal[0]/254.0f;
+            norm.y = (float) pVerts1[i].normal[1]/254.0f;
+            norm.z = (float) pVerts1[i].normal[2]/254.0f;
             fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
         }
 
@@ -250,9 +250,9 @@ int Model::Convert(std::string filename)
         {
             Vec3D norm;
             float w = (float) pVerts2[i].normal[3];
-            norm.x = (float) pVerts2[i].normal[0]/w;
-            norm.y = (float) pVerts2[i].normal[1]/w;
-            norm.z = (float) pVerts2[i].normal[2]/w;
+            norm.x = (float) pVerts2[i].normal[0]/254.0f;
+            norm.y = (float) pVerts2[i].normal[1]/254.0f;
+            norm.z = (float) pVerts2[i].normal[2]/254.0f;
             fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
         }
     }
