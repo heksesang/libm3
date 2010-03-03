@@ -11,12 +11,15 @@
 // Includes everything needed to register a simple MEL command with Maya.
 // 
 #include <maya/MSimple.h>
+#include "../lib/model.h"
 
 // Use helper macro to register a command with Maya.  It creates and
 // registers a command that does not support undo or redo.  The 
 // created class derives off of MPxCommand.
 //
 DeclareSimpleCommand( M3Import, "M3Import", "2010");
+
+using namespace m3;
 
 MStatus M3Import::doIt( const MArgList& args )
 //
@@ -34,8 +37,6 @@ MStatus M3Import::doIt( const MArgList& args )
 //
 {
 	MStatus stat = MS::kSuccess;
-
-    args.g
 
 	// Since this class is derived off of MPxCommand, you can use the 
 	// inherited methods to return values and set error messages

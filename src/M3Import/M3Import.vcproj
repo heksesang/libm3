@@ -164,7 +164,7 @@
 	<References>
 		<ProjectReference
 			ReferencedProjectIdentifier="{FDC6CEFF-971F-4F01-B059-E11AECCF4D50}"
-			RelativePathToProject=".\libm3.vcproj"
+			RelativePathToProject=".\lib\libm3.vcproj"
 		/>
 	</References>
 	<Files>

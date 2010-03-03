@@ -1,4 +1,4 @@
-#include "../model.h"
+#include "../lib/model.h"
 
 #include <boost/filesystem.hpp>
 

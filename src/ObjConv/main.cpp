@@ -20,7 +20,7 @@
 ****************************************************************************/
 
 #include <iostream>
-#include "../model.h"
+#include "../lib/model.h"
 
 using namespace std;
 using namespace boost::filesystem;
