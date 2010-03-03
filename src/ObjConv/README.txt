@@ -3,7 +3,8 @@ ObjConv README
 ObjConv converts .m3 files used by Starcraft II to the OBJ model format.
 
 Features:
-- Parses vertices, normals, faces and uv maps.
+- Parses vertices, normals, uv coords and faces.
+- Supports geosets.
 - Supports batch-conversion.
 
 Usage:

@@ -249,22 +249,22 @@ namespace m3
     struct Vertex1 // 36 byte
     {
         Vec3D pos;
-        uint8 boneWeight[4];
-        uint8 boneIndex[4];
-        uint8 normal[4];  //normal_x = (float)normal[0]/255.0f...
+        char boneWeight[4];
+        char boneIndex[4];
+        char normal[4];  //normal_x = (float)normal[0]/255.0f...
         uint16 uv[2];
         uint32 d1;
-        uint8 tangents[4];
+        char tangents[4];
     };
 
     struct Vertex2 // 32 byte
     {
         Vec3D pos;
-        uint8 boneWeight[4];
-        uint8 boneIndex[4];
-        uint8 normal[4];  //normal_x = (float)normal[0]/255.0f...
+        char boneWeight[4];
+        char boneIndex[4];
+        char normal[4];  //normal_x = (float)normal[0]/255.0f...
         uint16 uv[2];
-        uint8 tangents[4];
+        char tangents[4];
     };
 
     struct MATM
