@@ -236,25 +236,35 @@ int Model::Convert(std::string filename)
     // Write normals
     for(uint32 i = 0; i < nVertices; i++)
     {
+        Vec3D norm;
+        float w = 0.0f;
+
         if(pVerts1)
         {
-            Vec3D norm;
-            float w = (float) pVerts1[i].normal[3];
-            norm.x = (float) pVerts1[i].normal[0]/254.0f;
-            norm.y = (float) pVerts1[i].normal[1]/254.0f;
-            norm.z = (float) pVerts1[i].normal[2]/254.0f;
-            fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
+            norm.x = (float) 2*pVerts1[i].normal[0]/255.0f - 1;
+            norm.y = (float) 2*pVerts1[i].normal[1]/255.0f - 1;
+            norm.z = (float) 2*pVerts1[i].normal[2]/255.0f - 1;
+
+            w = (float) pVerts1[i].normal[3]/255.0f;
         }
 
         if(pVerts2)
         {
-            Vec3D norm;
-            float w = (float) pVerts2[i].normal[3];
-            norm.x = (float) pVerts2[i].normal[0]/254.0f;
-            norm.y = (float) pVerts2[i].normal[1]/254.0f;
-            norm.z = (float) pVerts2[i].normal[2]/254.0f;
-            fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
+            norm.x = (float) 2*pVerts2[i].normal[0]/255.0f - 1;
+            norm.y = (float) 2*pVerts2[i].normal[1]/255.0f - 1;
+            norm.z = (float) 2*pVerts2[i].normal[2]/255.0f - 1;
+
+            w = (float) pVerts2[i].normal[3]/255.0f;
         }
+
+        if(w)
+        {
+            norm.x = norm.x/w;
+            norm.y = norm.y/w;
+            norm.z = norm.z/w;
+        }
+
+        fprintf_s(f, "vn %f %f %f\n", norm.x, norm.y, norm.z);
     }
 
     // Write geosets
