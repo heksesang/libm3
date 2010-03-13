@@ -16,6 +16,12 @@ PS: If <path> is a directory, the application will perform a batch-conversion
     of all the .m3 files in the directory.
     
 --------------------------------------------------------------------
+ Version 1.05
+--------------------------------------------------------------------
+
+- Fixed a glitch causing some models to display incorrectly (ex: Barracks.m3)
+    
+--------------------------------------------------------------------
  Version 1.04
 --------------------------------------------------------------------
 
