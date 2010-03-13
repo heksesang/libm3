@@ -57,6 +57,12 @@ int main(int argc, char* argv[])
 
         DIV* view = NULL;
         MAT* materials = NULL;
+        Region* regions = NULL;
+
+        VertexExt* verts1 = NULL;
+        Vertex* verts2 = NULL;
+
+        uint32 nVertices = 0;
 
         switch(pRefs[pHead->MODL.ref].type)
         {
@@ -64,12 +70,32 @@ int main(int argc, char* argv[])
             pMODL20 = pModel->GetEntries<MODL20>(pHead->MODL);
             view = pModel->GetEntries<DIV>(pMODL20->views);
             materials = pModel->GetEntries<MAT>(pMODL20->materials);
+            if( (pMODL20->flags & 0x40000) != 0 )
+            {
+                nVertices = pMODL20->vertexData.nEntries/sizeof(VertexExt);
+                verts1 = pModel->GetEntries<VertexExt>(pMODL20->vertexData);
+            }
+            else
+            {
+                nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex);
+                verts2 = pModel->GetEntries<Vertex>(pMODL20->vertexData);
+            }
             break;
 
         case 23:
             pMODL23 = pModel->GetEntries<MODL23>(pHead->MODL);
             view = pModel->GetEntries<DIV>(pMODL23->views);
             materials = pModel->GetEntries<MAT>(pMODL23->materials);
+            if( (pMODL23->flags & 0x40000) != 0 )
+            {
+                nVertices = pMODL23->vertexData.nEntries/sizeof(VertexExt);
+                verts1 = pModel->GetEntries<VertexExt>(pMODL23->vertexData);
+            }
+            else
+            {
+                nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex);
+                verts2 = pModel->GetEntries<Vertex>(pMODL23->vertexData);
+            }
             break;
 
         default:
@@ -77,9 +103,29 @@ int main(int argc, char* argv[])
             break;
         }
 
+        regions = pModel->GetEntries<Region>(view->regions);
+
         vector<ReferenceEntry> refs;
         for(uint32 i = 0; i < pHead->nRefs; i++)
             refs.push_back( pRefs[i] );
+
+        vector<VertexExt> vertsExt;
+        if(verts1)
+        {
+            for(uint32 i = 0; i < nVertices; i++)
+                vertsExt.push_back(verts1[i]);
+        }
+
+        vector<Vertex> verts;
+        if(verts2)
+        {
+            for(uint32 i = 0; i < nVertices; i++)
+                verts.push_back(verts2[i]);
+        }
+
+        vector<Region> regs;
+        for(uint32 i = 0; i < view->regions.nEntries; i++)
+            regs.push_back(regions[i]);
 
     }
 

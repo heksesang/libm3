@@ -40,6 +40,8 @@ namespace m3
         
         char* m_buf;
         int   m_bufSize;
+
+        int   m_type;
         
         MD33* m_head;
         ReferenceEntry* m_refs;
@@ -62,8 +64,9 @@ namespace m3
         template <typename T>
         T* GetEntries(Reference ref);
 
-        MD33* GetHeader();
-        ReferenceEntry* GetRefs();
+        MD33* GetHeader() { return m_head; };
+        ReferenceEntry* GetRefs() { return m_refs; };
+        int GetType() { return m_type; };
     };
 
     template <typename T>

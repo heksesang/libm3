@@ -36,6 +36,8 @@ Model::Model(FILE* f) : m_buf(NULL)
 
     m_head = (MD33*)( m_buf );
     m_refs = (ReferenceEntry*)( m_buf + m_head->ofsRefs );
+
+    m_type = m_refs[m_head->MODL.ref].type;
 }
 
 Model::Model(const Model& m) : m_buf(NULL)
@@ -115,16 +117,6 @@ Model* Model::GetModel(string filename)
     return &iter->second;
 };
 
-MD33* Model::GetHeader()
-{
-    return m_head;
-}
-
-ReferenceEntry* Model::GetRefs()
-{
-    return m_refs;
-}
-
 int Model::Convert(std::string filename)
 {
     Model* pModel = Model::LoadModel(filename);
@@ -138,8 +130,8 @@ int Model::Convert(std::string filename)
     MODL20* pMODL20 = NULL;
     MODL23* pMODL23 = NULL;
 
-    Vertex1* pVerts1 = NULL;
-    Vertex2* pVerts2 = NULL;
+    VertexExt* pVerts1 = NULL;
+    Vertex* pVerts2 = NULL;
     
     DIV* views = NULL;
     Region* regions = NULL;
@@ -163,13 +155,13 @@ int Model::Convert(std::string filename)
         {
             if( (pMODL20->flags & 0x40000) != 0 ) // Has extra 4 byte
             {
-                pVerts1 = pModel->GetEntries<Vertex1>(pMODL20->vertexData);
-                nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex1);
+                pVerts1 = pModel->GetEntries<VertexExt>(pMODL20->vertexData);
+                nVertices = pMODL20->vertexData.nEntries/sizeof(VertexExt);
             }
             else
             {
-                pVerts2 = pModel->GetEntries<Vertex2>(pMODL20->vertexData);
-                nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex2);
+                pVerts2 = pModel->GetEntries<Vertex>(pMODL20->vertexData);
+                nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex);
             }
         }
         views = pModel->GetEntries<DIV>( pMODL20->views );
@@ -181,13 +173,13 @@ int Model::Convert(std::string filename)
         {
             if( (pMODL23->flags & 0x40000) != 0 ) // Has extra 4 byte
             {
-                pVerts1 = pModel->GetEntries<Vertex1>(pMODL23->vertexData);
-                nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex1);
+                pVerts1 = pModel->GetEntries<VertexExt>(pMODL23->vertexData);
+                nVertices = pMODL23->vertexData.nEntries/sizeof(VertexExt);
             }
             else
             {
-                pVerts2 = pModel->GetEntries<Vertex2>(pMODL23->vertexData);
-                nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex2);
+                pVerts2 = pModel->GetEntries<Vertex>(pMODL23->vertexData);
+                nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex);
             }
         }
         views = pModel->GetEntries<DIV>( pMODL23->views );
@@ -220,16 +212,18 @@ int Model::Convert(std::string filename)
     {
         if(pVerts1)
         {
-            float u = pVerts1[i].uv[0] > 2047 ? float(pVerts1[i].uv[0])/65535.0f : float(pVerts1[i].uv[0])/2047.0f;
-            float v = pVerts1[i].uv[1] > 2047 ? float(pVerts1[i].uv[1])/65535.0f : float(pVerts1[i].uv[1])/2047.0f;
-            fprintf_s(f, "vt %f %f\n", u, 1-v);
+            float u = (float) pVerts1[i].uv[0] / 2048;
+            float v = (float) pVerts1[i].uv[1] / 2048;
+
+            fprintf_s(f, "vt %f %f\n", u, -v);
         }
 
         if(pVerts2)
         {
-            float u = pVerts2[i].uv[0] > 2047 ? float(pVerts2[i].uv[0])/65535.0f : float(pVerts2[i].uv[0])/2047.0f;
-            float v = pVerts2[i].uv[1] > 2047 ? float(pVerts2[i].uv[1])/65535.0f : float(pVerts2[i].uv[1])/2047.0f;
-            fprintf_s(f, "vt %f %f\n", u, 1-v);
+            float u = (float) pVerts2[i].uv[0] / 2048;
+            float v = (float) pVerts2[i].uv[1] / 2048;
+
+            fprintf_s(f, "vt %f %f\n", u, -v);
         }
     }
     

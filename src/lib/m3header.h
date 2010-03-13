@@ -56,6 +56,18 @@ namespace m3
         /*0x0C*/ Reference MODL;
     };
 
+    enum ModelType
+    {
+        TYPE1 = 20,
+        TYPE2 = 23
+    };
+
+    enum VertexFormat
+    {
+        VERTEX_STANDARD,
+        VERTEX_EXTENDED
+    };
+
     struct MODL23
     {
         /*0x00*/ Reference name;
@@ -246,24 +258,24 @@ namespace m3
         float floats[34];
     };
 
-    struct Vertex1 // 36 byte
+    struct VertexExt // 36 byte
     {
         Vec3D pos;
         uint8 boneWeight[4];
         uint8 boneIndex[4];
         uint8 normal[4];  //normal_x = (float)normal[0]/255.0f...
-        uint16 uv[2];
+        int16 uv[2];
         uint32 d1;
         uint8 tangent[4];
     };
 
-    struct Vertex2 // 32 byte
+    struct Vertex // 32 byte
     {
         Vec3D pos;
         uint8 boneWeight[4];
         uint8 boneIndex[4];
         uint8 normal[4];  //normal_x = (float)normal[0]/255.0f...
-        uint16 uv[2];
+        int16 uv[2];
         uint8 tangent[4];
     };
 
