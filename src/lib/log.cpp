@@ -25,6 +25,7 @@ FILE * g_logfile = NULL;
 
 void LogPrintf(int Level, const char *format, ...)
 {
+    /*
     va_list args;
 	char buffer[2048];
 	
@@ -44,17 +45,17 @@ void LogPrintf(int Level, const char *format, ...)
 	fwrite(Log.c_str(), 1, strlen(Log.c_str()), g_logfile);
 	fflush(g_logfile);
 	//LogConsole(Level, Log);
+    */
 }
 
 void LogConsole(int Level, std::string s)
 {
 	HWND hWnd = GetConsoleWindow();
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	if (!hWnd)
 	{
 		// Create console
-		AllocConsole();	
+		AllocConsole();
 		SetConsoleTitleA("libm3");
 		// Set console size
 		int iWidth = 120, iHeight = 50;
@@ -62,6 +63,8 @@ void LogConsole(int Level, std::string s)
 		BOOL SB = SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), Co);
 		MoveWindow(GetConsoleWindow(), 0,0, 3000*8,iHeight*14, true);
 	}
+	
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	WORD Color;
 	switch (Level)
@@ -76,8 +79,8 @@ void LogConsole(int Level, std::string s)
 		Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
 		break;
 	}
-
-	SetConsoleTextAttribute(hConsole, Color);
+    
+    SetConsoleTextAttribute(hConsole, Color);
 	DWORD cCharsWritten;
 	if(hConsole)
 		WriteConsoleA(hConsole, s.c_str(), strlen(s.c_str()), &cCharsWritten, NULL);

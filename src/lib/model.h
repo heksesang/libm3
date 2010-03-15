@@ -64,6 +64,8 @@ namespace m3
         // Non-static functions
         template <typename T>
         T* GetEntries(Reference ref);
+        template <typename T>
+        T* GetEntry(Reference ref, int index);
 
         MD33* GetHeader() { return m_head; };
         ReferenceEntry* GetRefs() { return m_refs; };
@@ -74,6 +76,12 @@ namespace m3
     T* Model::GetEntries(Reference ref)
     {
         return (T*) ( m_buf + m_refs[ref.ref].offset );
+    }
+
+    template <typename T>
+    T* Model::GetEntry(Reference ref, int index)
+    {
+        return (T*) ( m_buf + m_refs[ref.ref].offset + sizeof(T)*index );
     }
 }
 

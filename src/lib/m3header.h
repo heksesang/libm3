@@ -279,6 +279,7 @@ namespace m3
         uint8 tangent[4];
     };
 
+
     struct MATM
     {
         uint32 d1;
@@ -301,7 +302,7 @@ namespace m3
         float unk2[85];
     };
 
-    struct DIV
+    struct Division
     {
         /*0x00*/ Reference faces; // U16
         /*0x08*/ Reference regions; // REGN - Region
@@ -430,7 +431,6 @@ namespace m3
     {
         float x, y, z, w;
     };
-
 }
 
 #endif // M3HEADER_H_
