@@ -31,6 +31,9 @@
 
 // M3
 #include "m3header.h"
+#include "log.hpp"
+
+#define MAX_REGIONS 10
 
 namespace m3
 {
@@ -40,8 +43,6 @@ namespace m3
         
         char* m_buf;
         int   m_bufSize;
-
-        int   m_type;
         
         MD33* m_head;
         ReferenceEntry* m_refs;
@@ -66,7 +67,7 @@ namespace m3
 
         MD33* GetHeader() { return m_head; };
         ReferenceEntry* GetRefs() { return m_refs; };
-        int GetType() { return m_type; };
+        int GetType() { return m_refs[m_head->MODL.ref].type; };
     };
 
     template <typename T>

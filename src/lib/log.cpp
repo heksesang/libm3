@@ -21,27 +21,29 @@
 
 #include "log.hpp"
 
-FILE *log = NULL;
+FILE * g_logfile = NULL;
 
 void LogPrintf(int Level, const char *format, ...)
 {
-	va_list args;
+    va_list args;
 	char buffer[2048];
 	
 	va_start(args, format);
 	vsnprintf_s(buffer, 2047, 2047, format, args);
 	va_end(args);
 	
-	if (log == NULL)
+	if (g_logfile == NULL)
 	{
-		fopen_s(&log, "libm3.log", "w");
+		errno_t error = fopen_s(&g_logfile, "D:/libm3.log", "w");
+        if(error)
+            return;
 	}
 	
 	// Create log message
-	std::string Log = StringFromFormat("%s %s", GetTimeFormatted().c_str(), buffer);
-	fwrite(Log.c_str(), 1, strlen(Log.c_str()), log);
-	fflush(log);
-	LogConsole(Level, Log);
+	std::string Log = StringFromFormat("[%s] %s\n", GetTimeFormatted().c_str(), buffer);
+	fwrite(Log.c_str(), 1, strlen(Log.c_str()), g_logfile);
+	fflush(g_logfile);
+	//LogConsole(Level, Log);
 }
 
 void LogConsole(int Level, std::string s)
@@ -86,14 +88,15 @@ void LogConsole(int Level, std::string s)
 std::string GetTimeFormatted()
 {
 	time_t sysTime;
-	struct tm * gmTime = NULL;
+	//struct tm * gmTime = NULL;
+    tm gmTime;
 	char formattedTime[13];
 	char tmp[13];
 
 	time(&sysTime);
-	localtime_s(gmTime, &sysTime);
+	localtime_s(&gmTime, &sysTime);
 
-	strftime(tmp, 6, "%M:%S", gmTime);
+	strftime(tmp, 6, "%M:%S", &gmTime);
 
 	// Now add the milliseconds
 	struct timeb tp;

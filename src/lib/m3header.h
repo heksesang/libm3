@@ -83,7 +83,7 @@ namespace m3
         /*0x40*/ uint32 d5;
         /*0x44*/ uint32 flags;
         /*0x48*/ Reference vertexData; // uint8
-        /*0x50*/ Reference views;
+        /*0x50*/ Reference divisions;
         /*0x58*/ Reference B; // uint16
 
         /*0x60*/ Vec3D extents[2];
@@ -171,7 +171,7 @@ namespace m3
         /*0x44*/ uint32 d5;
         /*0x44*/ uint32 flags;
         /*0x48*/ Reference vertexData; // uint8
-        /*0x50*/ Reference views;
+        /*0x50*/ Reference divisions;
         /*0x58*/ Reference B; // uint16
 
         /*0x60*/ Vec3D extents[2];
@@ -275,7 +275,7 @@ namespace m3
         uint8 boneWeight[4];
         uint8 boneIndex[4];
         uint8 normal[4];  //normal_x = (float)normal[0]/255.0f...
-        int16 uv[2];
+        uint16 uv[2];
         uint8 tangent[4];
     };
 

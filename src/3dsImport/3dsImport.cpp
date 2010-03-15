@@ -8,11 +8,15 @@
 // parties or copied or duplicated in any form, in whole or in part, without
 // the prior written consent of Autodesk, Inc.
 //**************************************************************************/
-// DESCRIPTION: Appwizard generated plugin
-// AUTHOR: 
+// DESCRIPTION: M3 Model Loader Plugin
+// AUTHOR: Gunnar Lilleaasen
 //***************************************************************************/
 
 #include "3dsImport.h"
+#include "../lib/model.h"
+#include <sstream>
+
+using namespace m3;
 
 #define m3import_CLASS_ID	Class_ID(0xaf819621, 0x608573a4)
 
@@ -64,7 +68,37 @@ ClassDesc2* Getm3importDesc() {
 	return &m3importDesc; 
 }
 
+enum
+{
+    m3import_params
+};
 
+enum
+{
+    m3import_filename
+};
+
+static ParamBlockDesc2 m3import_param_blk (
+
+   //Required arguments ----------------------------
+
+   0, _T("params"), 0, Getm3importDesc(),
+
+   //flags
+
+   NULL,
+
+ 
+
+   //Parameter Specifications ----------------------
+
+   // For each control create a parameter:
+
+   m3import_filename,      _T("filename"),      TYPE_FILENAME,    P_ANIMATABLE,    IDS_SPIN, end,
+
+   end
+
+);
 
 
 INT_PTR CALLBACK m3importOptionsDlgProc(HWND hWnd,UINT message,WPARAM wParam,LPARAM lParam) {
@@ -87,12 +121,12 @@ INT_PTR CALLBACK m3importOptionsDlgProc(HWND hWnd,UINT message,WPARAM wParam,LPA
 //--- m3import -------------------------------------------------------
 m3import::m3import()
 {
-
+    
 }
 
 m3import::~m3import() 
 {
-
+    
 }
 
 int m3import::ExtCount()
@@ -104,19 +138,19 @@ int m3import::ExtCount()
 const TCHAR *m3import::Ext(int n)
 {		
 	#pragma message(TODO("Return the 'i-th' file name extension (i.e. \"3DS\")."))
-	return _T("");
+	return _T("M3");
 }
 
 const TCHAR *m3import::LongDesc()
 {
 	#pragma message(TODO("Return long ASCII description (i.e. \"Targa 2.0 Image File\")"))
-	return _T("");
+	return _T("MDX 3.3 Model File");
 }
 	
 const TCHAR *m3import::ShortDesc() 
 {			
 	#pragma message(TODO("Return short ASCII description (i.e. \"Targa\")"))
-	return _T("");
+	return _T("M3 File");
 }
 
 const TCHAR *m3import::AuthorName()
@@ -154,16 +188,197 @@ void m3import::ShowAbout(HWND hWnd)
 	// Optional
 }
 
+Point3 normal_4d_to_3d(UCHAR normal[4])
+{
+    Point3 norm;
+    norm.x = (float) 2*normal[0]/255.0f - 1;
+    norm.y = (float) 2*normal[1]/255.0f - 1;
+    norm.z = (float) 2*normal[2]/255.0f - 1;
+
+    float w = (float) normal[3]/255.0f;
+
+    if(w)
+    {
+        norm.x = norm.x/w;
+        norm.y = norm.y/w;
+        norm.z = norm.z/w;
+    }
+    return norm;
+}
+
+int LoadFromFile(const TCHAR* filename, Mesh* msh[])
+{
+    // Load model
+    Model* pModel = Model::LoadModel(filename);
+    if(!pModel)
+    {
+        return FALSE;
+    }
+    else
+    {
+        // Get pointers to head and refs
+        MD33* pHead = pModel->GetHeader();
+        ReferenceEntry* pRefs = pModel->GetRefs();
+
+        // Get vertex reference and format
+        bool hasVertices = false;
+
+        Reference refDivs  = {0};
+        Reference refVerts = {0};
+        int vertexFormat = 0;
+
+        switch( pRefs[pHead->MODL.ref].type )
+        {
+        case TYPE1:
+            LogPrintf(LGREEN, "Model type: %d", pModel->GetType());
+            hasVertices  = (pModel->GetEntries<MODL20>( pHead->MODL )->flags & 0x20000) != 0;
+            vertexFormat = (pModel->GetEntries<MODL20>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
+            refVerts    = pModel->GetEntries<MODL20>( pHead->MODL )->vertexData;
+            refDivs     = pModel->GetEntries<MODL20>( pHead->MODL )->divisions;
+            break;
+
+        case TYPE2:
+            LogPrintf(LGREEN, "Model type: %d", pModel->GetType());
+            hasVertices  = (pModel->GetEntries<MODL23>( pHead->MODL )->flags & 0x20000) != 0;
+            vertexFormat = (pModel->GetEntries<MODL23>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
+            refVerts    = pModel->GetEntries<MODL23>( pHead->MODL )->vertexData;
+            refDivs     = pModel->GetEntries<MODL23>( pHead->MODL )->divisions;
+            break;
+
+        default:
+            LogPrintf(LYELLOW, "Unknown model type: %d", pModel->GetType());
+            return FALSE;
+        }
+        
+        DIV* divs = pModel->GetEntries<DIV>( refDivs );
+
+        // Faces
+        for(int region = 0; region < 1/*divs->regions.nEntries*/; region++)
+        {
+            msh[region] = new Mesh();
+            Region* geoset = pModel->GetEntries<Region>( divs->regions ) + sizeof(Region)*region;
+
+            // Vertices
+            LogPrintf(LGREEN, "Starting to parse vertices");
+            
+            uint8* vertexData = pModel->GetEntries<uint8>( refVerts );
+            msh[region]->setNumVerts(geoset->nVertices);
+            msh[region]->setNumTVerts(geoset->nVertices);
+            
+            switch( vertexFormat )
+            {
+            case VERTEX_STANDARD:
+                if( msh[region]->setNumVerts(geoset->nVertices) )
+                {
+                    //LogPrintf(LGREEN, "Set: Number of vertices: %d", msh[region]->getNumVerts());
+                    Vertex* vertex = pModel->GetEntries<Vertex>( refVerts ) + sizeof(Vertex)*geoset->ofsVertices;
+                    for(int i = 0; i < msh[region]->getNumVerts(); i++)
+                    {
+                        msh[region]->setVert(i, vertex[i].pos.x, vertex[i].pos.y, vertex[i].pos.z);
+                        //msh[region]->setNormal(i, normal_4d_to_3d(vertex[i].normal));
+                        //msh[region]->setTVert(i, (float) vertex[i].uv[0]/2048, (float) -vertex[i].uv[1]/2048, 0.0f);
+                        //LogPrintf(LGREEN, "Set: Vertex #%d", i);
+                    }
+                }
+                break;
+
+            case VERTEX_EXTENDED:
+                if( msh[region]->getNumVerts() )
+                {
+                    //LogPrintf(LGREEN, "Set: Number of vertices: %d", msh[region]->getNumVerts());
+                    VertexExt* vertex = pModel->GetEntries<VertexExt>( refVerts ) + sizeof(VertexExt)*geoset->ofsVertices;
+                    for(int i = 0; i < msh[region]->getNumVerts(); i++)
+                    {
+                        msh[region]->setVert(i, vertex[i].pos.x, vertex[i].pos.y, vertex[i].pos.z);
+                        msh[region]->setNormal(i, normal_4d_to_3d(vertex[i].normal));
+                        msh[region]->setTVert(i, (float) vertex[i].uv[0]/2048, (float) -vertex[i].uv[1]/2048, 0.0f);
+                        //LogPrintf(LGREEN, "Set: Vertex #%d", i);
+                    }
+                }
+                break;
+            }
+            
+            LogPrintf(LGREEN, "Starting to parse faces");
+            if( msh[region]->setNumFaces(geoset->nIndices/3) )
+            {
+                //LogPrintf(LGREEN, "Set: Number of faces: %d", msh[region]->getNumFaces());
+                uint16* faces = pModel->GetEntries<uint16>( divs->faces ) + sizeof(uint16)*geoset->ofsIndices;
+                for(int i = 0, j = 0; i < msh[region]->getNumFaces(); i++, j+=3)
+                {
+                    msh[region]->faces[i].setVerts(faces[j+0], faces[j+1], faces[j+2]);
+                    //LogPrintf(LDEBUG, "Set: Face #%d", i);
+                }
+            }
+        }
+
+        Model::UnloadModel(filename);
+    }
+    return TRUE;
+}
+
 int m3import::DoImport(const TCHAR *filename,ImpInterface *i,
 						Interface *gi, BOOL suppressPrompts)
 {
 	#pragma message(TODO("Implement the actual file import here and"))	
 
+    /*
 	if(!suppressPrompts)
 		DialogBoxParam(hInstance, 
 				MAKEINTRESOURCE(IDD_PANEL), 
 				GetActiveWindow(), 
 				m3importOptionsDlgProc, (LPARAM)this);
+                */
+	
+    // TriObject...
+    TriObject* object[MAX_REGIONS] = {0};
+    Mesh* mshArray[MAX_REGIONS] = {0};
+
+    if( !object )
+    {
+        return FALSE;
+    }
+
+    if( LoadFromFile(filename, mshArray) )
+    {
+        LogPrintf(LDEBUG, "Adding nodes to the scene");
+        for(int region = 0; region < MAX_REGIONS; region++)
+        {
+            if(!mshArray[region])
+            {
+                LogPrintf(LDEBUG, "%d geosets parsed", region);
+                break;
+            }
+
+            object[region] = CreateNewTriObject();
+            object[region]->GetMesh() = *mshArray[region];
+
+            ImpNode* node = i->CreateNode();
+
+            if( !node )
+            {
+                LogPrintf(LYELLOW, "Failed to create node for geoset #%d", region);
+                delete object[region];
+                continue;
+            }
+    		
+            Matrix3 tm;
+    		tm.IdentityMatrix();
+            node->Reference(object[region]);
+            node->SetTransform(0,tm);
+
+            std::stringstream ss;
+            ss << "Geoset #" << region;
+
+            i->AddNodeToScene(node);
+            node->SetName( ss.str().c_str() );
+
+            LogPrintf(LDEBUG, "Added node '%s' to the scene", ss.str());
+        }
+        LogPrintf(LDEBUG, "Finished adding nodes");
+        i->RedrawViews();
+
+        return TRUE;
+    }
 
 	#pragma message(TODO("return TRUE If the file is imported properly"))
 	return FALSE;

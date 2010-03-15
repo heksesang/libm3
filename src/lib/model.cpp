@@ -36,8 +36,6 @@ Model::Model(FILE* f) : m_buf(NULL)
 
     m_head = (MD33*)( m_buf );
     m_refs = (ReferenceEntry*)( m_buf + m_head->ofsRefs );
-
-    m_type = m_refs[m_head->MODL.ref].type;
 }
 
 Model::Model(const Model& m) : m_buf(NULL)
@@ -70,23 +68,42 @@ Model* Model::LoadModel(string filename)
     path filepath(filename);
 
     if( !exists(filepath) ) // Invalid filepath
+    {
+        LogPrintf(LYELLOW, "The file %s does not exist", filename);
         return NULL;
+    }
 
     map<string, Model>::iterator iter = m_models.find(filepath.filename() );
     if( iter != m_models.end() ) // File already loaded
+    {
+        LogPrintf(LDEBUG, "The file %s is already loaded", filename);
         return Model::GetModel(filename);
+    }
 
     FILE* f = NULL;
     int error = 0;
     
     error = fopen_s(&f, filepath.string().c_str(), "rb");
     if(error) // Failed to open the file
+    {
+        LogPrintf(LYELLOW, "The file %s could not be opened", filename);
         return NULL;
+    }
 
     Model m3(f);
     pair<string, Model> entry(filepath.filename(), m3);
     
-    m_models.insert(entry);
+    if(m3.GetHeader()->id[0] == '3' && m3.GetHeader()->id[1] == '3'
+        && m3.GetHeader()->id[2] == 'D' && m3.GetHeader()->id[3] == 'M')
+    {
+        m_models.insert(entry);
+        LogPrintf(LGREEN, "The file %s was loaded", filename);
+    }
+    else
+    {
+        LogPrintf(LYELLOW, "Identifier does not match '33DM'");
+        return NULL;
+    }
     
     return Model::GetModel(filename); // Everything went fine
 };
@@ -97,7 +114,14 @@ void Model::UnloadModel(string filename)
 
     map<string, Model>::iterator iter = m_models.find(filepath.filename() );
     if( iter != m_models.end() )
+    {
+        LogPrintf(LGREEN, "The file %s was unloaded", filename);
         m_models.erase( iter );
+    }
+    else
+    {
+        LogPrintf(LGREEN, "The file %s was not loaded", filename);
+    }
 };
 
 Model* Model::GetModel(string filename)
@@ -108,15 +132,12 @@ Model* Model::GetModel(string filename)
     if( iter == m_models.end() ) // Model isn't loaded
     {
         Model* pModel = LoadModel(filename);
-        if(!pModel)
-            throw std::runtime_error("ERROR: Model not available"); // Failed to load model
-        else
-            return pModel;
+        return pModel;
     }
 
     return &iter->second;
 };
-
+/*
 int Model::Convert(std::string filename)
 {
     Model* pModel = Model::LoadModel(filename);
@@ -164,7 +185,7 @@ int Model::Convert(std::string filename)
                 nVertices = pMODL20->vertexData.nEntries/sizeof(Vertex);
             }
         }
-        views = pModel->GetEntries<DIV>( pMODL20->views );
+        views = pModel->GetEntries<DIV>( pMODL20->divisions );
         break;
 
     case 23:
@@ -182,7 +203,7 @@ int Model::Convert(std::string filename)
                 nVertices = pMODL23->vertexData.nEntries/sizeof(Vertex);
             }
         }
-        views = pModel->GetEntries<DIV>( pMODL23->views );
+        views = pModel->GetEntries<DIV>( pMODL23->divisions );
         break;
 
     default:
@@ -212,18 +233,22 @@ int Model::Convert(std::string filename)
     {
         if(pVerts1)
         {
-            float u = (float) pVerts1[i].uv[0] / 2048;
-            float v = (float) pVerts1[i].uv[1] / 2048;
+            float u = pVerts1[i].uv[0] > 4094 ? float(pVerts1[i].uv[0])/32767.0f : float(pVerts1[i].uv[0])/2047.0f;
+            float v = pVerts1[i].uv[1] > 4094 ? 1-float(pVerts1[i].uv[1])/32767.0f : float(pVerts1[i].uv[1])/2047.0f;
+            //float u = (float) pVerts1[i].uv[0] / 2047.0f;
+            //float v = (float) pVerts1[i].uv[1] / 2047.0f;
 
-            fprintf_s(f, "vt %f %f\n", u, -v);
+            fprintf_s(f, "vt %f %f\n", u, 1-v);
         }
 
         if(pVerts2)
         {
-            float u = (float) pVerts2[i].uv[0] / 2048;
-            float v = (float) pVerts2[i].uv[1] / 2048;
+            float u = pVerts2[i].uv[0] > 2047 ? float(pVerts2[i].uv[0])/32767.0f : float(pVerts2[i].uv[0])/2047.0f;
+            float v = pVerts2[i].uv[1] > 2047 ? float(pVerts2[i].uv[1])/32767.0f : float(pVerts2[i].uv[1])/2047.0f;
+            //float u = (float) pVerts2[i].uv[0] / 2047.0f;
+            //float v = (float) pVerts2[i].uv[1] / 2047.0f;
 
-            fprintf_s(f, "vt %f %f\n", u, -v);
+            fprintf_s(f, "vt %f %f\n", u, 1-v);
         }
     }
     
@@ -277,5 +302,6 @@ int Model::Convert(std::string filename)
 
     return 0;
 }
+*/
 
 map<string, Model> Model::m_models;
