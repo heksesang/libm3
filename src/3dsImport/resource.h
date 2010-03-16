@@ -10,6 +10,12 @@
 #define IDD_PANEL                       101
 #define IDC_CLOSEBUTTON                 1000
 #define IDC_DOSTUFF                     1000
+#define IDC_LIST_REGN                   1001
+#define IDC_CHECK_MAT                   1002
+#define IDC_CHECK_ANIM                  1003
+#define IDC_BUTTON_OK                   1004
+#define IDC_BUTTON2                     1005
+#define IDC_BUTTON_CANCEL               1005
 #define IDC_COLOR                       1456
 #define IDC_EDIT                        1490
 #define IDC_SPIN                        1496
@@ -20,7 +26,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        101
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1001
+#define _APS_NEXT_CONTROL_VALUE         1005
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -40,7 +40,7 @@ class m3import : public SceneImport {
 		
 		//Constructor/Destructor
 		m3import();
-		~m3import();		
+		~m3import();
 
 };
 
@@ -121,12 +121,12 @@ INT_PTR CALLBACK m3importOptionsDlgProc(HWND hWnd,UINT message,WPARAM wParam,LPA
 //--- m3import -------------------------------------------------------
 m3import::m3import()
 {
-    
+    LogConsole(LDEBUG, "Constructor\n");
 }
 
 m3import::~m3import() 
 {
-    
+    LogConsole(LDEBUG, "Destructor\n");
 }
 
 int m3import::ExtCount()
@@ -191,9 +191,9 @@ void m3import::ShowAbout(HWND hWnd)
 Point3 normal_4d_to_3d(UCHAR normal[4])
 {
     Point3 norm;
-    norm.x = (float) normal[0]/UCHAR_MAX;
-    norm.y = (float) normal[1]/UCHAR_MAX;
-    norm.z = (float) normal[2]/UCHAR_MAX;
+    norm.x = (float) 2*normal[0]/UCHAR_MAX - 1;
+    norm.y = (float) 2*normal[1]/UCHAR_MAX - 1;
+    norm.z = (float) 2*normal[2]/UCHAR_MAX - 1;
 
     float w = (float) normal[3]/UCHAR_MAX;
 
@@ -206,35 +206,22 @@ Point3 normal_4d_to_3d(UCHAR normal[4])
     return norm;
 }
 
-int LoadFromFile(const TCHAR* filename, Mesh* msh[])
+int LoadMesh(__in  const TCHAR* filename,
+             __in  int rnum,         // Region index
+             __in  int vfmt,         // Vertex format
+             __in  Reference rref,   // Region reference
+             __in  Reference vref,   // Vertex reference
+             __in  Reference fref,   // Face reference
+             __out Mesh* msh)
 {   
     int vcnt = 0; // Vertex count
     int fcnt = 0; // Face count
-    int rcnt = 0; // Region count
 
     int vnum = 0; // Vertex number
     int fnum = 0; // Face number
-    int rnum = 0; // Region number
-
-    Point3* vlst = NULL, nlst = NULL, tlst = NULL; // Vertex lists
-    Face*   flst = NULL; // Face list
-
-    Reference dref = {0}; // Division reference
-    Reference vref = {0}; // Vertex reference
-    Reference rref = {0}; // Region reference
-    Reference fref = {0}; // Face reference
-
-    int vfmt = -1; // Vertex format
-
-    Division* pDiv = NULL;
-    Region*  pRegn = NULL;
 
     // Load model
     Model* pModel = Model::LoadModel(filename);
-
-#ifdef CONSOLE
-    LogConsole(LDEBUG, std::string("Loaded model\n"));
-#endif
 
     if(!pModel)
     {
@@ -242,121 +229,56 @@ int LoadFromFile(const TCHAR* filename, Mesh* msh[])
     }
     else
     {
-        // Get pointers to head and refs
-        MD33* pHead = pModel->GetHeader();
-        ReferenceEntry* pRefs = pModel->GetRefs();
+        // Number of vertices and faces in the region
+        vcnt = pModel->GetEntry<Region>( rref, rnum )->nVertices;
+        fcnt = pModel->GetEntry<Region>( rref, rnum )->nIndices;
 
-        // Get references and vertex format
-        switch( pRefs[pHead->MODL.ref].type )
+        // Start vertex and face in the region
+        vnum = pModel->GetEntry<Region>( rref, rnum )->ofsVertices;
+        fnum = pModel->GetEntry<Region>( rref, rnum )->ofsIndices;
+
+        // Set the size of the vertex array in the mesh
+        msh->setNumVerts(vcnt);
+        //msh[rnum]->setNumTVerts(vcnt);
+        
+        switch( vfmt )
         {
-        case TYPE1:
-            vfmt = (pModel->GetEntries<MODL20>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
-            vref = pModel->GetEntries<MODL20>( pHead->MODL )->vertexData;
-            dref = pModel->GetEntries<MODL20>( pHead->MODL )->divisions;
+        case VERTEX_STANDARD:
+            for(int vcount = 0; vcount < vcnt; vnum, vcount++)
+            {
+                Vertex* v = pModel->GetEntry<Vertex>( vref, vnum+vcount );
+                msh->setVert(vcount, v->pos.x, v->pos.y, v->pos.z);
+                msh->setNormal(vcount, normal_4d_to_3d(v->normal));
+                //msh[region]->setTVert(i, (float) vertex[i].uv[0]/2048, (float) -vertex[i].uv[1]/2048, 0.0f);
+            }
             break;
 
-        case TYPE2:
-            vfmt = (pModel->GetEntries<MODL23>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
-            vref = pModel->GetEntries<MODL23>( pHead->MODL )->vertexData;
-            dref = pModel->GetEntries<MODL23>( pHead->MODL )->divisions;
+        case VERTEX_EXTENDED:
+            for(int vcount = 0; vcount < vcnt; vnum, vcount++)
+            {
+                VertexExt* v = pModel->GetEntry<VertexExt>( vref, vnum+vcount );
+                msh->setVert(vcount, v->pos.x, v->pos.y, v->pos.z);
+                msh->setNormal(vcount, normal_4d_to_3d(v->normal));
+                //msh[region]->setTVert(i, (float) vertex[i].uv[0]/2048, (float) -vertex[i].uv[1]/2048, 0.0f);
+            }
             break;
 
         default:
             return FALSE;
         }
         
-        // Region reference and number of regions
-        rref = pModel->GetEntries<Division>( dref )->regions;
-        rcnt = pModel->GetEntries<Division>( dref )->regions.nEntries;
+        // Set the size of the face array in the mesh
+        msh->setNumFaces(fcnt/3);
 
-        // Face reference
-        fref = pModel->GetEntries<Division>( dref )->faces;
-
-#ifdef CONSOLE
-        LogConsole(LDEBUG, "Starting to parse regions\n");
-#endif
-
-        for(; rnum < rcnt; rnum++)
+        int fcount = 0;
+        for(; fcount < fcnt/3; fcount++)
         {
-            // Mesh for this region
-            msh[rnum] = new Mesh();
-
-            // Number of vertices and faces in the region
-            vcnt = pModel->GetEntry<Region>( rref, rnum )->nVertices;
-            fcnt = pModel->GetEntry<Region>( rref, rnum )->nIndices;
-
-#ifdef CONSOLE
-        LogConsole(LDEBUG, StringFromFormat("vcnt: %d\nfcnt: %d\n", vcnt, fcnt));
-#endif
-
-            // Start vertex and face in the region
-            vnum = pModel->GetEntry<Region>( rref, rnum )->ofsVertices;
-            fnum = pModel->GetEntry<Region>( rref, rnum )->ofsIndices;
-
-#ifdef CONSOLE
-        LogConsole(LDEBUG, StringFromFormat("vnum: %d\nfnum: %d\n", vnum, fnum));
-#endif
-
-            // Set the size of the vertex array in the mesh
-            msh[rnum]->setNumVerts(vcnt);
-            //msh[rnum]->setNumTVerts(vcnt);
-            
-            switch( vfmt )
-            {
-            case VERTEX_STANDARD:
-                for(; vnum < vcnt; vnum++)
-                {
-                    Vertex* v = pModel->GetEntry<Vertex>( vref, vnum );
-                    msh[rnum]->setVert(vnum, v->pos.x, v->pos.y, v->pos.z);
-                    //msh[region]->setNormal(i, normal_4d_to_3d(vertex[i].normal));
-                    //msh[region]->setTVert(i, (float) vertex[i].uv[0]/2048, (float) -vertex[i].uv[1]/2048, 0.0f);
-                }
-                break;
-
-            case VERTEX_EXTENDED:
-                for(; vnum < vcnt; vnum++)
-                {
-                    VertexExt* v = pModel->GetEntry<VertexExt>( vref, vnum );
-                    msh[rnum]->setVert(vnum, v->pos.x, v->pos.y, v->pos.z);
-                    //msh[region]->setNormal(i, normal_4d_to_3d(vertex[i].normal));
-                    //msh[region]->setTVert(i, (float) vertex[i].uv[0]/2048, (float) -vertex[i].uv[1]/2048, 0.0f);
-                }
-                break;
-
-            default:
-                return FALSE;
-            }
-
-#ifdef CONSOLE
-            LogConsole(LDEBUG, "Finished adding vertices\n");
-#endif            
-            
-            // Set the size of the face array in the mesh
-            msh[rnum]->setNumFaces(fcnt/3);
-
-            for(; fnum < fcnt; fnum+=3)
-            {
-                uint16* f = pModel->GetEntry<uint16>( fref, fnum );
-                msh[rnum]->faces[fnum/3].setVerts(f[0], f[1], f[2]);
-            }
-
-#ifdef CONSOLE
-            LogConsole(LDEBUG, "Finished adding faces\n");
-#endif
-            
-            // Build the mesh
-            //msh[rnum]->buildNormals();
-
-#ifdef CONSOLE
-            LogConsole(LDEBUG, "Finished building mesh\n");
-#endif
+            uint16* f = pModel->GetEntry<uint16>( fref, fnum+fcount*3 );
+            msh->faces[fcount].setVerts(f[0]-vnum, f[1]-vnum, f[2]-vnum);
         }
-
-        Model::UnloadModel(filename);
-
-#ifdef CONSOLE
-            LogConsole(LDEBUG, "Unloaded model\n");
-#endif
+        
+        // Build the mesh
+        msh->buildNormals();
     }
     return TRUE;
 }
@@ -364,71 +286,91 @@ int LoadFromFile(const TCHAR* filename, Mesh* msh[])
 int m3import::DoImport(const TCHAR *filename,ImpInterface *i,
 						Interface *gi, BOOL suppressPrompts)
 {
-	#pragma message(TODO("Implement the actual file import here and"))	
+	#pragma message(TODO("Implement the actual file import here and"))
 
-    /*
+    int rcnt = 0;
+    int rnum = 0;
+
+    int vfmt = 0;
+    
+    Reference dref = {0};
+    Reference vref = {0};
+    Reference fref = {0};
+    Reference rref = {0};
+
+    Model* pModel = Model::LoadModel(filename);
+    MD33* pHead = pModel->GetHeader();
+    ReferenceEntry* pRefs = pModel->GetRefs();
+
+    switch( pRefs[pHead->MODL.ref].type )
+    {
+    case TYPE1:
+        vfmt = (pModel->GetEntries<MODL20>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
+        dref = pModel->GetEntries<MODL20>( pHead->MODL )->divisions;
+        vref = pModel->GetEntries<MODL20>( pHead->MODL )->vertexData;
+        break;
+
+    case TYPE2:
+        vfmt = (pModel->GetEntries<MODL23>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
+        dref = pModel->GetEntries<MODL23>( pHead->MODL )->divisions;
+        vref = pModel->GetEntries<MODL23>( pHead->MODL )->vertexData;
+        break;
+
+    default:
+        return FALSE;
+    }
+
+    rref = pModel->GetEntry<Division>( dref, 0 )->regions;
+    fref = pModel->GetEntry<Division>( dref, 0 )->faces;
+
+    rcnt = rref.nEntries;
+
+    
 	if(!suppressPrompts)
 		DialogBoxParam(hInstance, 
 				MAKEINTRESOURCE(IDD_PANEL), 
 				GetActiveWindow(), 
 				m3importOptionsDlgProc, (LPARAM)this);
-                */
+                
 	
-    // Objects and meshes
-    TriObject* object[MAX_REGIONS] = {0};
-    Mesh*    mshArray[MAX_REGIONS] = {0};
-
-    if( !object )
+    // Object ptr
+    TriObject* object = NULL;
+    
+    for(; rnum < rcnt; rnum++)
     {
-        return FALSE;
-    }
+        object = CreateNewTriObject();
 
-    if( LoadFromFile(filename, mshArray) )
-    {
-        for(int rnum = 0; rnum < MAX_REGIONS; rnum++)
+        if( !object )
+            continue;
+
+        LoadMesh(filename, rnum, vfmt, rref, vref, fref, &object->GetMesh());
+
+        ImpNode* node = i->CreateNode();
+
+        if( !node )
         {
-            if(!mshArray[rnum])
-            {
-                break;
-            }
-
-            object[rnum] = CreateNewTriObject();
-            object[rnum]->GetMesh() = *mshArray[rnum];
-
-            ImpNode* node = i->CreateNode();
-
-            if( !node )
-            {
 #ifdef CONSOLE
-                LogConsole(LDEBUG, "Failed to create node\n");
+            LogConsole(LDEBUG, "Failed to create node\n");
 #endif
-                delete object[rnum];
-                continue;
-            }
-
-            Matrix3 tm;
-    		tm.IdentityMatrix();
-
-            node->Reference(object[rnum]);
-            node->SetTransform(0,tm);
-
-            std::stringstream ss;
-            ss << "Geoset #" << rnum;
-
-            i->AddNodeToScene(node);
-            node->SetName( ss.str().c_str() );
-#ifdef CONSOLE
-            LogConsole(LDEBUG, "Added node to scene\n");
-#endif
+            delete object;
+            continue;
         }
-        i->RedrawViews();
 
-#ifdef CONSOLE
-        LogConsole(LDEBUG, "Finished importing model\n");
-#endif
+        Matrix3 tm;
+		tm.IdentityMatrix();
 
-        return TRUE;
+        node->Reference(object);
+        node->SetTransform(0,tm);
+
+        std::stringstream ss;
+        ss << "Geoset #" << rnum;
+
+        i->AddNodeToScene(node);
+        node->SetName( ss.str().c_str() );
     }
+    i->RedrawViews();
+
+    return TRUE;
 
 	#pragma message(TODO("return TRUE If the file is imported properly"))
 	return FALSE;

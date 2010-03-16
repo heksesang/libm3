@@ -33,8 +33,6 @@
 #include "m3header.h"
 #include "log.hpp"
 
-#define MAX_REGIONS 10
-
 namespace m3
 {
     class Model
