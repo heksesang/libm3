@@ -293,6 +293,10 @@ int LoadFromFile(const TCHAR* filename, Mesh* msh[])
             vnum = pModel->GetEntry<Region>( rref, rnum )->ofsVertices;
             fnum = pModel->GetEntry<Region>( rref, rnum )->ofsIndices;
 
+#ifdef CONSOLE
+        LogConsole(LDEBUG, StringFromFormat("vnum: %d\nfnum: %d\n", vnum, fnum));
+#endif
+
             // Set the size of the vertex array in the mesh
             msh[rnum]->setNumVerts(vcnt);
             //msh[rnum]->setNumTVerts(vcnt);
@@ -328,12 +332,12 @@ int LoadFromFile(const TCHAR* filename, Mesh* msh[])
 #endif            
             
             // Set the size of the face array in the mesh
-            msh[rnum]->setNumFaces(fcnt);
+            msh[rnum]->setNumFaces(fcnt/3);
 
             for(; fnum < fcnt; fnum+=3)
             {
                 uint16* f = pModel->GetEntry<uint16>( fref, fnum );
-                msh[rnum]->faces[fnum].setVerts(f[0], f[1], f[2]);
+                msh[rnum]->faces[fnum/3].setVerts(f[0], f[1], f[2]);
             }
 
 #ifdef CONSOLE
