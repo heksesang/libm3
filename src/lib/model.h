@@ -45,6 +45,9 @@ namespace m3
         MD33* m_head;
         ReferenceEntry* m_refs;
 
+        
+        int flags;
+
     public:
         Model(FILE* f);
         Model(const Model& m);
@@ -52,14 +55,10 @@ namespace m3
 
         Model& operator=(const Model& m);
 
-        // Static functions
         static Model* LoadModel(std::string filename);
         static void   UnloadModel(std::string filename);
         static Model* GetModel(std::string filename);
-        
-        static int Convert(std::string filename);
 
-        // Non-static functions
         template <typename T>
         T* GetEntries(Reference ref);
         template <typename T>

@@ -15,6 +15,7 @@
 #include "3dsImport.h"
 #include "../lib/model.h"
 #include <sstream>
+#include <iskin.h>
 
 using namespace m3;
 
@@ -206,22 +207,60 @@ Point3 normal_4d_to_3d(UCHAR normal[4])
     return norm;
 }
 
-int LoadMesh(__in  const TCHAR* filename,
-             __in  int rnum,         // Region index
-             __in  int vfmt,         // Vertex format
-             __in  Reference rref,   // Region reference
-             __in  Reference vref,   // Vertex reference
-             __in  Reference fref,   // Face reference
-             __out Mesh* msh)
-{   
-    int vcnt = 0; // Vertex count
-    int fcnt = 0; // Face count
+BOOL LoadSkeleton(__in  const TCHAR* filename,
+                  __in  INode* bones,
+                  __out Mesh* msh)
+{
+    Model*          pModel = Model::LoadModel(filename);
+    MD33*           pHead = pModel->GetHeader();
+    ReferenceEntry* pRefs = pModel->GetRefs();
 
-    int vnum = 0; // Vertex number
-    int fnum = 0; // Face number
+    Reference bref = {0};
 
+    switch( pRefs[pHead->MODL.ref].type )
+    {
+    case TYPE1:
+        bref = pModel->GetEntries<MODL20>( pHead->MODL )->bones;
+        break;
+
+    case TYPE2:
+        bref = pModel->GetEntries<MODL23>( pHead->MODL )->bones;
+        break;
+
+    default:
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+int Load(__in  const TCHAR* filename,
+         __out int &vfmt,
+         __out int &rcnt,
+         __out int &fcnt,
+         __out int &vcnt,
+         __out int &bcnt,
+         __out Face* flst,
+         __out Point3* vlst,
+         __out Point3* nlst,
+         __out Point3* tlst,
+         __out INode* blst,
+         __in  Reference rref,
+         __in  Reference bref,
+         __in  Reference vref,
+         __in  Reference fref)
+{
     // Load model
     Model* pModel = Model::LoadModel(filename);
+
+    Mesh* msh;
+    INode* node;
+
+    RVertex* r;
+
+    node->AttachChild(r)
+
+    msh->setVer
 
     if(!pModel)
     {
@@ -282,97 +321,44 @@ int LoadMesh(__in  const TCHAR* filename,
     }
     return TRUE;
 }
-
+*/
 int m3import::DoImport(const TCHAR *filename,ImpInterface *i,
 						Interface *gi, BOOL suppressPrompts)
 {
 	#pragma message(TODO("Implement the actual file import here and"))
-
-    int rcnt = 0;
-    int rnum = 0;
-
-    int vfmt = 0;
     
-    Reference dref = {0};
-    Reference vref = {0};
-    Reference fref = {0};
-    Reference rref = {0};
+	/*if(!suppressPrompts)
+		DialogBoxParam(hInstance, 
+				MAKEINTRESOURCE(IDD_PANEL), 
+				GetActiveWindow(), 
+				m3importOptionsDlgProc, (LPARAM)this);*/
 
     Model* pModel = Model::LoadModel(filename);
     MD33* pHead = pModel->GetHeader();
     ReferenceEntry* pRefs = pModel->GetRefs();
+    
+    Reference bref = {0};
 
     switch( pRefs[pHead->MODL.ref].type )
     {
     case TYPE1:
-        vfmt = (pModel->GetEntries<MODL20>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
-        dref = pModel->GetEntries<MODL20>( pHead->MODL )->divisions;
-        vref = pModel->GetEntries<MODL20>( pHead->MODL )->vertexData;
+        bref = pModel->GetEntries<MODL20>( pHead->MODL )->bones;
         break;
 
     case TYPE2:
-        vfmt = (pModel->GetEntries<MODL23>( pHead->MODL )->flags & 0x40000) != 0 ? VERTEX_EXTENDED : VERTEX_STANDARD;
-        dref = pModel->GetEntries<MODL23>( pHead->MODL )->divisions;
-        vref = pModel->GetEntries<MODL23>( pHead->MODL )->vertexData;
+        bref = pModel->GetEntries<MODL23>( pHead->MODL )->bones;
         break;
 
     default:
         return FALSE;
     }
 
-    rref = pModel->GetEntry<Division>( dref, 0 )->regions;
-    fref = pModel->GetEntry<Division>( dref, 0 )->faces;
+    ImpNode* inode = i->CreateNode();
+    INode* bnode = inode->GetINode();
 
-    rcnt = rref.nEntries;
-
-    
-	if(!suppressPrompts)
-		DialogBoxParam(hInstance, 
-				MAKEINTRESOURCE(IDD_PANEL), 
-				GetActiveWindow(), 
-				m3importOptionsDlgProc, (LPARAM)this);
-                
-	
-    // Object ptr
-    TriObject* object = NULL;
-    
-    for(; rnum < rcnt; rnum++)
-    {
-        object = CreateNewTriObject();
-
-        if( !object )
-            continue;
-
-        LoadMesh(filename, rnum, vfmt, rref, vref, fref, &object->GetMesh());
-
-        ImpNode* node = i->CreateNode();
-
-        if( !node )
-        {
-#ifdef CONSOLE
-            LogConsole(LDEBUG, "Failed to create node\n");
-#endif
-            delete object;
-            continue;
-        }
-
-        Matrix3 tm;
-		tm.IdentityMatrix();
-
-        node->Reference(object);
-        node->SetTransform(0,tm);
-
-        std::stringstream ss;
-        ss << "Geoset #" << rnum;
-
-        i->AddNodeToScene(node);
-        node->SetName( ss.str().c_str() );
-    }
-    i->RedrawViews();
-
-    return TRUE;
+    bnode->SetBoneNodeOnOff(TRUE, 0);
 
 	#pragma message(TODO("return TRUE If the file is imported properly"))
-	return FALSE;
+	return TRUE;
 }
 	

@@ -247,7 +247,7 @@ namespace m3
         /*0x224*/ uint32 d44;
     };
 
-    struct BONE
+    struct Bone
     {
         int32 d1; // Keybone?
         Reference name;
