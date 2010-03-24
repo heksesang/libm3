@@ -345,7 +345,7 @@ namespace libm3
             bw.Write((Byte)0);
             bw.Write((Byte)0);
         }
-    };
+    }
 
     public struct Face
     {
