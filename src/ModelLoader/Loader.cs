@@ -33,8 +33,6 @@ namespace ModelLoader
 
             FileStream fout = new FileStream("D:/test.m3", FileMode.Create);
             BinaryWriter bw = new BinaryWriter(fout);
-            foreach (Vertex v in m.Vertices)
-                Vertex.WriteVertex(bw, m.Flags, v);
         }
     }
 }

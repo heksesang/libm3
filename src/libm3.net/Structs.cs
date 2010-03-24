@@ -53,7 +53,7 @@ namespace libm3
             bw.Write(head.Model.NumEntries);
             bw.Write(head.Model.Tag);
         }
-    };
+    }
 
     public struct TagRef
     {
@@ -73,7 +73,7 @@ namespace libm3
             bw.Write(tr.NumEntries);
             bw.Write(tr.Tag);
         }
-    };
+    }
 
     public struct Tag
     {
@@ -99,7 +99,7 @@ namespace libm3
             bw.Write(t.NumEntries);
             bw.Write(t.Type);
         }
-    };
+    }
 
     public struct Model
     {
@@ -107,6 +107,10 @@ namespace libm3
         public UInt32 Version;
         public UInt32 Flags;
         public List<Vertex> Vertices;
+        public List<Face> Faces;
+        public List<Bone> Bones;
+        public List<Geoset> Geosets;
+        public List<Material> Materials;
 
         public Vector3D[] VertexExtents;
         public Double VertexRadius;
@@ -114,43 +118,102 @@ namespace libm3
         public static Model ReadModel(FileStream fs, BinaryReader br, UInt32 type, List<Tag> tags)
         {
             Model m = new Model();
-            Int64 lCurrentPos = fs.Position;
+            List<Int64> lstPos = new List<Int64>();
 
             // Read name
             TagRef refName = TagRef.ReadTagRef(br);
-            lCurrentPos = fs.Position;
+            
+            lstPos.Add(fs.Position);
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
 
-            m.Name = br.ReadString();
+            m.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
 
-            fs.Seek(lCurrentPos, SeekOrigin.Begin);
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
 
             // Read version
             m.Version = br.ReadUInt32();
 
             // Skip a lot of data
-            br.ReadBytes(0x38);
+            br.ReadBytes(0x2C);
+
+            // Read bones
+            TagRef refBone = TagRef.ReadTagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refBone.Tag].Offset, SeekOrigin.Begin);
+
+            m.Bones = new List<Bone>();
+
+            for (int i = 0; i < refBone.NumEntries; i++ )
+            {
+                m.Bones.Add(Bone.ReadBone(fs, br, tags));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Skip an integer
+            br.ReadBytes(4);
 
             // Read flags
             m.Flags = br.ReadUInt32();
 
             // Read vertices
             TagRef refVertex = TagRef.ReadTagRef(br);
-            Tag tagVertex = tags[refVertex.Tag];
-            lCurrentPos = fs.Position;
-            fs.Seek(tagVertex.Offset, SeekOrigin.Begin);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refVertex.Tag].Offset, SeekOrigin.Begin);
 
             m.Vertices = new List<Vertex>();
 
-            while (tagVertex.Offset + tagVertex.NumEntries != fs.Position)
+            while (tags[refVertex.Tag].Offset + tags[refVertex.Tag].NumEntries != fs.Position)
             {
                 m.Vertices.Add(Vertex.ReadVertex(br, m.Flags));
             }
 
-            fs.Seek(lCurrentPos, SeekOrigin.Begin);
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
 
-            // Skip geometry for now
-            br.ReadBytes(0x10);
+            // Geometry
+            TagRef refDiv = TagRef.ReadTagRef(br);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refDiv.Tag].Offset, SeekOrigin.Begin);
+
+            TagRef refFace = TagRef.ReadTagRef(br);
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refFace.Tag].Offset, SeekOrigin.Begin);
+
+            m.Faces = new List<Face>();
+
+            for (int i = 0; i < refFace.NumEntries; i+=3)
+            {
+                m.Faces.Add(Face.ReadFace(br));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            TagRef refGeoset = TagRef.ReadTagRef(br);
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refGeoset.Tag].Offset, SeekOrigin.Begin);
+
+            m.Geosets = new List<Geoset>();
+
+            for (int i = 0; i < refGeoset.NumEntries; i++)
+            {
+                m.Geosets.Add(Geoset.ReadGeoset(br));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Unknown 16-bit integers
+            br.ReadBytes(0x08);
 
             // Read vertex extents
             m.VertexExtents = new Vector3D[2];
@@ -162,9 +225,31 @@ namespace libm3
             }
             m.VertexRadius = br.ReadSingle();
 
+            // Skip a lot of data
+            br.ReadBytes(0x64);
+
+            if (type == 23)
+                br.ReadBytes(0x08);
+
+            // Materials
+            TagRef refMats = TagRef.ReadTagRef(br);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refMats.Tag].Offset, SeekOrigin.Begin);
+
+            m.Materials = new List<Material>();
+
+            for (Int32 i = 0; i < refMats.NumEntries; i++)
+            {
+                m.Materials.Add(Material.ReadMaterial(fs, br, tags));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
             return m;
         }
-    };
+    }
 
     public struct Vertex
     {
@@ -261,4 +346,167 @@ namespace libm3
             bw.Write((Byte)0);
         }
     };
+
+    public struct Face
+    {
+        public Int16[] Vertices;
+
+        public static Face ReadFace(BinaryReader br)
+        {
+            Face f = new Face();
+            f.Vertices = new Int16[3];
+
+            for (Int16 i = 0; i < 3; i++)
+            {
+                f.Vertices[i] = br.ReadInt16();
+            }
+
+            return f;
+        }
+    }
+
+    public struct Bone
+    {
+        public String Name;
+        public UInt32 Flags;
+        public Int16 Parent;
+
+        public static Bone ReadBone(FileStream fs, BinaryReader br, List<Tag> tags)
+        {
+            Bone b = new Bone();
+            Int64 lCurrentPos;
+
+            // Skip first integer
+            br.ReadBytes(4);
+
+            // Name
+            TagRef refName = TagRef.ReadTagRef(br);
+            lCurrentPos = fs.Position;
+            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+            b.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+            fs.Seek(lCurrentPos, SeekOrigin.Begin);
+
+            // Flags
+            b.Flags = br.ReadUInt32();
+
+            // Parent
+            b.Parent = br.ReadInt16();
+
+            // Skip a lot of data
+            br.ReadBytes(0x8A);
+
+            return b;
+        }
+    }
+
+    public struct Geoset
+    {
+        public UInt32 Type;
+        public UInt32 StartVertex;
+        public UInt32 NumVertices;
+        public UInt32 StartTriangle;
+        public UInt32 NumTriangles;
+
+        public static Geoset ReadGeoset(BinaryReader br)
+        {
+            Geoset gs = new Geoset();
+
+            gs.Type = br.ReadUInt32();
+            gs.StartVertex = br.ReadUInt16();
+            gs.NumVertices = br.ReadUInt16();
+            gs.StartTriangle = br.ReadUInt32()/3;
+            gs.NumTriangles = br.ReadUInt32()/3;
+
+            // Skip a lot of data
+            br.ReadBytes(0x0C);
+            
+            return gs;
+        }
+    }
+
+    public struct Material
+    {
+        public String Name;
+        public List<Layer> Layers;
+        public Vector2D Coords;
+
+        public static Material ReadMaterial(FileStream fs, BinaryReader br, List<Tag> tags)
+        {
+            Material m = new Material();
+            m.Layers = new List<Layer>();
+            List<Int64> lstPos = new List<Int64>();
+
+            // Name
+            TagRef refName = TagRef.ReadTagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+
+            m.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Skip data
+            br.ReadBytes(0x20);
+
+            // Coords?
+            m.Coords.X = br.ReadSingle();
+            m.Coords.Y = br.ReadSingle();
+
+            // Layers
+            for (Int32 i = 0; i < 13; i++)
+            {
+                TagRef refLayer = TagRef.ReadTagRef(br);
+
+                lstPos.Add(fs.Position);
+                fs.Seek(tags[refLayer.Tag].Offset, SeekOrigin.Begin);
+
+                m.Layers.Add(Layer.ReadLayer(fs, br, tags));
+
+                fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+                lstPos.RemoveAt(lstPos.Count - 1);
+            }
+
+            // Skip a lot of data
+            br.ReadBytes(0x3C);
+
+            return m;
+        }
+    }
+
+    public struct Layer
+    {
+        public String Name;
+
+        public static Layer ReadLayer(FileStream fs, BinaryReader br, List<Tag> tags)
+        {
+            Layer l = new Layer();
+            List<Int64> lstPos = new List<Int64>();
+
+            // Skip unknown value
+            br.ReadInt32();
+
+            // Name
+            TagRef refName = TagRef.ReadTagRef(br);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+
+            if(tags[refName.Tag].Id == "RAHC")
+                l.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Skip a lot of data
+            br.ReadBytes(0x154);
+
+            return l;
+        }
+    }
+
+    public struct Sequence
+    {
+    }
 }

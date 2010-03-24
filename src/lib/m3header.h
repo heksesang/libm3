@@ -282,7 +282,7 @@ namespace m3
 
     struct MATM
     {
-        uint32 d1;
+        uint32 d1; // Index into geosets?
         uint32 d2; // Index into MAT-table?
     };
 
