@@ -31,8 +31,7 @@ namespace ModelLoader
 
             Model m = Model.ReadModel(fs, br, lstTag[head.Model.Tag].Type, lstTag);
 
-            FileStream fout = new FileStream("D:/test.m3", FileMode.Create);
-            BinaryWriter bw = new BinaryWriter(fout);
+            m.ToXML();
         }
     }
 }

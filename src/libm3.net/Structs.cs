@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml;
 
 namespace libm3
 {
@@ -57,9 +58,18 @@ namespace libm3
 
     public struct AnimRef
     {
-        /*0x00*/ public UInt16 Flags; //usually 1
-        /*0x02*/ public UInt16 AnimFlag; //6 indicates animation data present
-        /*0x04*/ public UInt32 AnimId; //a unique uint32 value referenced in STC.animid and STS.animid
+        /*0x00*/ public UInt32 Flags;
+        /*0x04*/ public UInt32 AnimId;
+
+        public static AnimRef ReadAnimRef(BinaryReader br)
+        {
+            AnimRef aref = new AnimRef();
+
+            aref.Flags = br.ReadUInt32();
+            aref.AnimId = br.ReadUInt32();
+
+            return aref;
+        }
     }
 
     public struct TagRef
@@ -108,7 +118,7 @@ namespace libm3
         }
     }
 
-    public struct Model
+    public class Model
     {
         public String Name;
         public UInt32 Version;
@@ -118,6 +128,7 @@ namespace libm3
         public List<Bone> Bones;
         public List<Geoset> Geosets;
         public List<Material> Materials;
+        public List<MaterialGroup> MaterialGroups;
 
         public Vector3D[] VertexExtents;
         public Double VertexRadius;
@@ -216,6 +227,33 @@ namespace libm3
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
+            TagRef refMatBind = TagRef.ReadTagRef(br);
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refMatBind.Tag].Offset, SeekOrigin.Begin);
+
+            for (int i = 0; i < refMatBind.NumEntries; i++)
+            {
+                // Skip 4 bytes
+                br.ReadBytes(4);
+                
+                // Read geoid
+                UInt16 geoid = br.ReadUInt16();
+
+                // Skip 4 bytes
+                br.ReadBytes(4);
+
+                // Read material id
+                UInt16 matid = br.ReadUInt16();
+
+                // Skip 2 bytes
+                br.ReadBytes(2);
+
+                m.Geosets[geoid].MaterialGroup = matid;
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
@@ -233,12 +271,27 @@ namespace libm3
             m.VertexRadius = br.ReadSingle();
 
             // Skip a lot of data
-            br.ReadBytes(0x64);
+            br.ReadBytes(0x5C);
 
             if (type == 23)
                 br.ReadBytes(0x08);
 
             // Materials
+            TagRef refMatGroups = TagRef.ReadTagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refMatGroups.Tag].Offset, SeekOrigin.Begin);
+
+            m.MaterialGroups = new List<MaterialGroup>();
+
+            for (Int32 i = 0; i < refMatGroups.NumEntries; i++)
+            {
+                m.MaterialGroups.Add(MaterialGroup.ReadMaterialGroup(br));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
             TagRef refMats = TagRef.ReadTagRef(br);
             
             lstPos.Add(fs.Position);
@@ -256,9 +309,67 @@ namespace libm3
 
             return m;
         }
+
+        public void ToXML()
+        {
+            XmlDocument doc = new XmlDocument();
+            XmlNode node;
+
+            node = doc.CreateNode(XmlNodeType.XmlDeclaration, "", "");
+            doc.AppendChild(node);
+
+            // Root node
+            XmlElement root = doc.CreateElement("COLLADA");
+            doc.AppendChild(root);
+
+            // Asset
+            XmlElement asset = doc.CreateElement("asset");
+            XmlElement contr = doc.CreateElement("contributor");
+            XmlElement tool = doc.CreateElement("authoring_tool");
+            XmlText toolText = doc.CreateTextNode("libm3");
+            XmlElement source = doc.CreateElement("source_data");
+            XmlText sourceText = doc.CreateTextNode(Name);
+
+            asset.AppendChild(contr);
+            contr.AppendChild(tool);
+            tool.AppendChild(toolText);
+            contr.AppendChild(source);
+            source.AppendChild(sourceText);
+
+            root.AppendChild(asset);
+
+            // Geometry libs
+            XmlElement geolibs = doc.CreateElement("libraries_geometries");
+
+            for (UInt32 i = 0; i < Geosets.Count; i++)
+            {
+                XmlElement geoset = doc.CreateElement("geometry");
+                geoset.SetAttribute("id", "geoset" + i);
+                geoset.SetAttribute("name", "Geoset " + i);
+                XmlElement mesh = doc.CreateElement("mesh");
+
+                geolibs.AppendChild(geoset);
+                geoset.AppendChild(mesh);
+            }
+
+            root.AppendChild(geolibs);
+
+            // Set the namespace and version
+            root.SetAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema");
+            root.SetAttribute("version", "1.4.0");
+
+            try
+            {
+                doc.Save("D:\\test.xml");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+        }
     }
 
-    public struct Vertex
+    public class Vertex
     {
         public Vector3D Position;
         public Vector4D Normal;
@@ -354,7 +465,7 @@ namespace libm3
         }
     }
 
-    public struct Face
+    public class Face
     {
         public Int16[] Vertices;
 
@@ -372,7 +483,7 @@ namespace libm3
         }
     }
 
-    public struct Bone
+    public class Bone
     {
         public String Name;
         public UInt32 Flags;
@@ -381,9 +492,12 @@ namespace libm3
         public QuaternionD Rotation;
         public Vector3D Scale;
 
+        public AnimRef[] refs;
+
         public static Bone ReadBone(FileStream fs, BinaryReader br, List<Tag> tags)
         {
             Bone b = new Bone();
+            b.refs = new AnimRef[3];
             Int64 lCurrentPos;
 
             // Skip first integer
@@ -403,7 +517,10 @@ namespace libm3
             b.Parent = br.ReadInt16();
 
             // Skip data
-            br.ReadBytes(0x0A);
+            br.ReadBytes(0x02);
+
+            // Translation data
+            b.refs[0] = AnimRef.ReadAnimRef(br);
 
             // Position
             b.Position.X = br.ReadSingle();
@@ -434,13 +551,14 @@ namespace libm3
         }
     }
 
-    public struct Geoset
+    public class Geoset
     {
         public UInt32 Type;
         public UInt32 StartVertex;
         public UInt32 NumVertices;
         public UInt32 StartTriangle;
         public UInt32 NumTriangles;
+        public UInt32 MaterialGroup;
 
         public static Geoset ReadGeoset(BinaryReader br)
         {
@@ -459,7 +577,7 @@ namespace libm3
         }
     }
 
-    public struct Material
+    public class Material
     {
         public String Name;
         public List<Layer> Layers;
@@ -510,7 +628,23 @@ namespace libm3
         }
     }
 
-    public struct Layer
+    public class MaterialGroup
+    {
+        public UInt32 Index;
+        public UInt32 Num;
+
+        public static MaterialGroup ReadMaterialGroup(BinaryReader br)
+        {
+            MaterialGroup matGroup = new MaterialGroup();
+
+            matGroup.Num = br.ReadUInt32();
+            matGroup.Index = br.ReadUInt32();
+
+            return matGroup;
+        }
+    }
+
+    public class Layer
     {
         public String Name;
 
@@ -541,7 +675,7 @@ namespace libm3
         }
     }
 
-    public struct Sequence
+    public class Sequence
     {
     }
 }
