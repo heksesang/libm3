@@ -55,6 +55,13 @@ namespace libm3
         }
     }
 
+    public struct AnimRef
+    {
+        /*0x00*/ public UInt16 Flags; //usually 1
+        /*0x02*/ public UInt16 AnimFlag; //6 indicates animation data present
+        /*0x04*/ public UInt32 AnimId; //a unique uint32 value referenced in STC.animid and STS.animid
+    }
+
     public struct TagRef
     {
         /*0x00*/ public Int32 NumEntries;
@@ -370,6 +377,9 @@ namespace libm3
         public String Name;
         public UInt32 Flags;
         public Int16 Parent;
+        public Vector3D Position;
+        public QuaternionD Rotation;
+        public Vector3D Scale;
 
         public static Bone ReadBone(FileStream fs, BinaryReader br, List<Tag> tags)
         {
@@ -392,8 +402,33 @@ namespace libm3
             // Parent
             b.Parent = br.ReadInt16();
 
-            // Skip a lot of data
-            br.ReadBytes(0x8A);
+            // Skip data
+            br.ReadBytes(0x0A);
+
+            // Position
+            b.Position.X = br.ReadSingle();
+            b.Position.Y = br.ReadSingle();
+            b.Position.Z = br.ReadSingle();
+
+            // Skip data
+            br.ReadBytes(0x18);
+
+            // Rotation
+            b.Rotation.X = br.ReadSingle();
+            b.Rotation.Y = br.ReadSingle();
+            b.Rotation.Z = br.ReadSingle();
+            b.Rotation.W = br.ReadSingle();
+
+            // Skip data
+            br.ReadBytes(0x1C);
+
+            // Scale
+            b.Scale.X = br.ReadSingle();
+            b.Scale.Y = br.ReadSingle();
+            b.Scale.Z = br.ReadSingle();
+
+            // Skip data
+            br.ReadBytes(0x24);
 
             return b;
         }
