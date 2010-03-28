@@ -39,7 +39,7 @@
     </Reference>
     <Reference Include="Sharp3D.Math, Version=1.1.3.0, Culture=neutral, PublicKeyToken=529e2e82fcc0ba71">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Users\Gunnar\Documents\Libs\bin\Release\Sharp3D.Math.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Downloads\Sharp3D.Math.v1.1.3-Binaries\bin\Release\Sharp3D.Math.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

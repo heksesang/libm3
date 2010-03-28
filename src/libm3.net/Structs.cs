@@ -26,6 +26,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace libm3
 {
@@ -323,36 +324,7 @@ namespace libm3
             doc.AppendChild(root);
 
             // Asset
-            XmlElement asset = doc.CreateElement("asset");
-            XmlElement contr = doc.CreateElement("contributor");
-            XmlElement tool = doc.CreateElement("authoring_tool");
-            XmlText toolText = doc.CreateTextNode("libm3");
-            XmlElement source = doc.CreateElement("source_data");
-            XmlText sourceText = doc.CreateTextNode(Name);
-
-            asset.AppendChild(contr);
-            contr.AppendChild(tool);
-            tool.AppendChild(toolText);
-            contr.AppendChild(source);
-            source.AppendChild(sourceText);
-
-            root.AppendChild(asset);
-
-            // Geometry libs
-            XmlElement geolibs = doc.CreateElement("libraries_geometries");
-
-            for (UInt32 i = 0; i < Geosets.Count; i++)
-            {
-                XmlElement geoset = doc.CreateElement("geometry");
-                geoset.SetAttribute("id", "geoset" + i);
-                geoset.SetAttribute("name", "Geoset " + i);
-                XmlElement mesh = doc.CreateElement("mesh");
-
-                geolibs.AppendChild(geoset);
-                geoset.AppendChild(mesh);
-            }
-
-            root.AppendChild(geolibs);
+            XML.Build(doc, this);
 
             // Set the namespace and version
             root.SetAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema");
@@ -360,12 +332,407 @@ namespace libm3
 
             try
             {
-                doc.Save("D:\\test.xml");
+                doc.Save("C:\\Release\\test.xml");
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }
+        }
+    }
+
+    public static class XML
+    {
+        public static void BuildAsset(XmlDocument doc, String source)
+        {
+            XmlNode root = doc.SelectSingleNode("/COLLADA");
+            XmlElement assetElem = doc.CreateElement("asset");
+            root.AppendChild(assetElem);
+
+            XmlElement contributorElem = doc.CreateElement("contributor");
+            assetElem.AppendChild(contributorElem);
+
+            // Authoring tool
+            XmlElement toolElem = doc.CreateElement("authoring_tool");
+            XmlText toolText = doc.CreateTextNode("libm3");
+
+            contributorElem.AppendChild(toolElem);
+            toolElem.AppendChild(toolText);
+
+            // Source data
+            XmlElement sourceElem = doc.CreateElement("source_data");
+            XmlText sourceText = doc.CreateTextNode(source);
+
+            contributorElem.AppendChild(sourceElem);
+            sourceElem.AppendChild(sourceText);
+        }
+        private static void BuildVertexSource(XmlDocument doc, KeyValuePair<String, Geoset> geoset, List<Vertex> vertices)
+        {
+            XmlElement sourceElem;
+            XmlElement arrayElem;
+            XmlText arrayValues;
+            XmlElement tech_common;
+            XmlElement accessElem;
+            XmlElement param;
+            XmlElement vertsElem;
+            XmlElement inputElem;
+
+            XmlNode root = doc.SelectSingleNode("/COLLADA/library_geometries/geometry[@id='" + geoset.Key + "']/mesh");
+
+            Int32 first = geoset.Value.StartVertex;
+            Int32 count = geoset.Value.NumVertices;
+            Int32 last  = first + count;
+
+            // Position
+            sourceElem = doc.CreateElement("source");
+            sourceElem.SetAttribute("id", geoset.Key + "_position");
+            
+            arrayElem = doc.CreateElement("float_array");
+            arrayElem.SetAttribute("id", geoset.Key + "_position-array");
+            arrayElem.SetAttribute("count", Convert.ToString(count*3));
+
+            arrayValues = doc.CreateTextNode("\r\n");
+
+            tech_common = doc.CreateElement("technique_common");
+
+            accessElem = doc.CreateElement("accessor");
+            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
+            accessElem.SetAttribute("count", Convert.ToString(count));
+            accessElem.SetAttribute("stride", "3");
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "X");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "Y");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "Z");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            root.AppendChild(sourceElem);
+            sourceElem.AppendChild(arrayElem);
+            arrayElem.AppendChild(arrayValues);
+            sourceElem.AppendChild(tech_common);
+            tech_common.AppendChild(accessElem);
+
+            for (Int32 i = first; i < last; i++)
+            {
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Z) + "\r\n");
+            }
+
+            // Normal
+            sourceElem = doc.CreateElement("source");
+            sourceElem.SetAttribute("id", geoset.Key + "_normal");
+            
+            arrayElem = doc.CreateElement("float_array");
+            arrayElem.SetAttribute("id", geoset.Key + "_normal-array");
+            arrayElem.SetAttribute("count", Convert.ToString(count*3));
+
+            arrayValues = doc.CreateTextNode("\r\n");
+
+            tech_common = doc.CreateElement("technique_common");
+
+            accessElem = doc.CreateElement("accessor");
+            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
+            accessElem.SetAttribute("count", Convert.ToString(count));
+            accessElem.SetAttribute("stride", "3");
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "X");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "Y");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "Z");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            root.AppendChild(sourceElem);
+            sourceElem.AppendChild(arrayElem);
+            arrayElem.AppendChild(arrayValues);
+            sourceElem.AppendChild(tech_common);
+            tech_common.AppendChild(accessElem);
+
+            for (Int32 i = first; i < last; i++)
+            {
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Z) + "\r\n");
+            }
+
+            // UV
+            sourceElem = doc.CreateElement("source");
+            sourceElem.SetAttribute("id", geoset.Key + "_uv");
+            
+            arrayElem = doc.CreateElement("float_array");
+            arrayElem.SetAttribute("id", geoset.Key + "_uv-array");
+            arrayElem.SetAttribute("count", Convert.ToString(count*2));
+
+            arrayValues = doc.CreateTextNode("\r\n");
+
+            tech_common = doc.CreateElement("technique_common");
+
+            accessElem = doc.CreateElement("accessor");
+            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
+            accessElem.SetAttribute("count", Convert.ToString(count));
+            accessElem.SetAttribute("stride", "2");
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "S");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "T");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            root.AppendChild(sourceElem);
+            sourceElem.AppendChild(arrayElem);
+            arrayElem.AppendChild(arrayValues);
+            sourceElem.AppendChild(tech_common);
+            tech_common.AppendChild(accessElem);
+
+            for (Int32 i = first; i < last; i++)
+            {
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + "\r\n");
+            }
+
+            // Tangent
+            sourceElem = doc.CreateElement("source");
+            sourceElem.SetAttribute("id", geoset.Key + "_tangent");
+            
+            arrayElem = doc.CreateElement("float_array");
+            arrayElem.SetAttribute("id", geoset.Key + "_tangent-array");
+            arrayElem.SetAttribute("count", Convert.ToString(count*3));
+
+            arrayValues = doc.CreateTextNode("\r\n");
+
+            tech_common = doc.CreateElement("technique_common");
+
+            accessElem = doc.CreateElement("accessor");
+            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
+            accessElem.SetAttribute("count", Convert.ToString(count));
+            accessElem.SetAttribute("stride", "3");
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "X");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "Y");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            param = doc.CreateElement("param");
+            param.SetAttribute("name", "Z");
+            param.SetAttribute("type", "float");
+
+            accessElem.AppendChild(param);
+
+            root.AppendChild(sourceElem);
+            sourceElem.AppendChild(arrayElem);
+            arrayElem.AppendChild(arrayValues);
+            sourceElem.AppendChild(tech_common);
+            tech_common.AppendChild(accessElem);
+
+            for (Int32 i = first; i < last; i++)
+            {
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + " ");
+                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Z) + "\r\n");
+            }
+
+            // <vertices>
+            vertsElem = doc.CreateElement("vertices");
+            vertsElem.SetAttribute("id", geoset.Key + "_vertex");
+
+            root.AppendChild(vertsElem);
+
+            // <vertices> : <input>
+            inputElem = doc.CreateElement("input");
+            inputElem.SetAttribute("source", "#" + geoset.Key + "_position");
+            inputElem.SetAttribute("semantic", "POSITION");
+
+            vertsElem.AppendChild(inputElem);
+        }
+        private static void BuildTriangles(XmlDocument doc, KeyValuePair<String, Geoset> geoset, List<Face> triangles)
+        {
+            XmlElement triElem;
+            XmlElement triEntryElem;
+            XmlText triValues;
+            XmlElement inputElem;
+
+            XmlNode root = doc.SelectSingleNode("/COLLADA/library_geometries/geometry[@id='" + geoset.Key + "']/mesh");
+
+            Int32 first = geoset.Value.StartTriangle;
+            Int32 count = geoset.Value.NumTriangles;
+            Int32 last = first + count;
+
+            // <triangles>
+            triElem = doc.CreateElement("triangles");
+            triElem.SetAttribute("count", Convert.ToString(count));
+
+            root.AppendChild(triElem);
+
+            // <vertices> : <input>
+            inputElem = doc.CreateElement("input");
+            inputElem.SetAttribute("source", "#" + geoset.Key + "_vertex");
+            inputElem.SetAttribute("semantic", "VERTEX");
+            inputElem.SetAttribute("offset", "0");
+
+            triElem.AppendChild(inputElem);
+            /*
+            inputElem = doc.CreateElement("input");
+            inputElem.SetAttribute("source", "#" + geoset.Key + "_normal");
+            inputElem.SetAttribute("semantic", "NORMAL");
+            inputElem.SetAttribute("offset", "1");
+
+            triElem.AppendChild(inputElem);
+
+            inputElem = doc.CreateElement("input");
+            inputElem.SetAttribute("source", "#" + geoset.Key + "_uv");
+            inputElem.SetAttribute("semantic", "TEXCOORD");
+            inputElem.SetAttribute("offset", "2");
+
+            triElem.AppendChild(inputElem);
+            
+            inputElem = doc.CreateElement("input");
+            inputElem.SetAttribute("source", "#" + geo.Key + "_tangent");
+            inputElem.SetAttribute("semantic", "TEXTANGENT");
+            inputElem.SetAttribute("offset", "3");
+            
+            triElem.AppendChild(inputElem);
+            */
+            triEntryElem = doc.CreateElement("p");
+            triValues = doc.CreateTextNode("\r\n");
+
+            triEntryElem.AppendChild(triValues);
+            triElem.AppendChild(triEntryElem);
+
+            for (Int32 i = first; i < last; i++)
+            {
+                triValues.AppendData(Convert.ToString(triangles[i].Vertices[0] - geoset.Value.StartVertex) + " ");
+
+                triValues.AppendData(Convert.ToString(triangles[i].Vertices[1] - geoset.Value.StartVertex) + " ");
+
+                triValues.AppendData(Convert.ToString(triangles[i].Vertices[2] - geoset.Value.StartVertex) + "\r\n");
+            }
+        }
+        public static void BuildGeoset(XmlDocument doc, KeyValuePair<String, Geoset> geoset, List<Vertex> vertices, List<Face> triangles)
+        {
+            XmlElement elGeometry;
+
+            XmlNode root = doc.SelectSingleNode("/COLLADA/library_geometries");
+
+            // <geometry>
+            elGeometry = doc.CreateElement("geometry");
+            elGeometry.SetAttribute("id", geoset.Key);
+
+            root.AppendChild(elGeometry);
+
+            // <mesh>
+            elGeometry.AppendChild(doc.CreateElement("mesh"));
+            XML.BuildVertexSource(doc, geoset, vertices);
+            XML.BuildTriangles(doc, geoset, triangles);
+        }
+        public static void BuildVisualScene(XmlDocument doc)
+        {
+            XmlElement elVisualScene;
+            XmlElement elNode;
+            XmlElement elGeometry;
+
+            XmlNode root = doc.SelectSingleNode("/COLLADA").AppendChild(doc.CreateElement("library_visual_scenes"));
+            XmlNodeList elements;
+
+            elVisualScene = doc.CreateElement("visual_scene");
+            elVisualScene.SetAttribute("id", "RootNode");
+
+            root.AppendChild(elVisualScene);
+
+            elements = doc.SelectNodes("/COLLADA/library_geometries/geometry");
+            foreach (XmlElement el in elements)
+            {
+                elNode = doc.CreateElement("node");
+                elVisualScene.AppendChild(elNode);
+
+                elGeometry = doc.CreateElement("instance_geometry");
+                elGeometry.SetAttribute("url", "#" + el.GetAttribute("id"));
+                elNode.AppendChild(elGeometry);
+            }
+        }
+        public static void BuildScene(XmlDocument doc)
+        {
+            XmlNodeList VisualSceneList = doc.SelectNodes("/COLLADA/library_visual_scenes/visual_scene");
+            XmlNode root = doc.SelectSingleNode("/COLLADA").AppendChild(doc.CreateElement("scene"));
+
+            foreach (XmlElement el in VisualSceneList)
+            {
+                XmlElement elSceneNode = doc.CreateElement("instance_visual_scene");
+                root.AppendChild(elSceneNode);
+                elSceneNode.SetAttribute("url", "#" + el.GetAttribute("id"));
+            }
+        }
+        
+        // Extension functions
+        public static XmlNode GetElementByAttribute(this XmlNode node, String tag, String attribute, String value)
+        {
+            return node.SelectSingleNode("/" + tag + "[@" + attribute + "=" + value + "]");
+        }
+
+        // Build geoset
+        public static void Build(XmlDocument doc, Model model)
+        {
+            XmlElement el;
+            XmlNode root = doc.SelectSingleNode("/COLLADA");
+
+            root.AppendChild(doc.CreateElement("library_geometries"));
+            root.AppendChild(doc.CreateElement("library_visual_scenes")).AppendChild(doc.CreateElement("visual_scene"));
+            root.AppendChild(doc.CreateElement("scene"));
+
+            el = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene");
+            el.SetAttribute("id", "RootNode");
+
+            Int32 count = 0;
+            foreach (Geoset set in model.Geosets)
+            {
+                XmlElement geometry = (XmlElement)doc.SelectSingleNode("/COLLADA/library_geometries").AppendChild(doc.CreateElement("geometry"));
+                geometry.SetAttribute("id", "geoset" + count);
+                geometry.AppendChild(doc.CreateElement("mesh"));
+                XmlElement node = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene").AppendChild(doc.CreateElement("node"));
+                node.SetAttribute("id", "geoset" + count + "_node");
+                XmlElement instance_geometry = (XmlElement)node.AppendChild(doc.CreateElement("instance_geometry"));
+                instance_geometry.SetAttribute("url", "#geoset" + count);
+                count++;
+            }
+
+            XmlElement instance_visual_scene = (XmlElement)doc.SelectSingleNode("/COLLADA/scene").AppendChild(doc.CreateElement("instance_visual_scene"));
+            instance_visual_scene.SetAttribute("url", "#RootNode");
         }
     }
 
@@ -553,22 +920,22 @@ namespace libm3
 
     public class Geoset
     {
-        public UInt32 Type;
-        public UInt32 StartVertex;
-        public UInt32 NumVertices;
-        public UInt32 StartTriangle;
-        public UInt32 NumTriangles;
-        public UInt32 MaterialGroup;
+        public Int32 Type;
+        public Int32 StartVertex;
+        public Int32 NumVertices;
+        public Int32 StartTriangle;
+        public Int32 NumTriangles;
+        public Int32 MaterialGroup;
 
         public static Geoset ReadGeoset(BinaryReader br)
         {
             Geoset gs = new Geoset();
 
-            gs.Type = br.ReadUInt32();
+            gs.Type = br.ReadInt32();
             gs.StartVertex = br.ReadUInt16();
             gs.NumVertices = br.ReadUInt16();
-            gs.StartTriangle = br.ReadUInt32()/3;
-            gs.NumTriangles = br.ReadUInt32()/3;
+            gs.StartTriangle = br.ReadInt32()/3;
+            gs.NumTriangles = br.ReadInt32()/3;
 
             // Skip a lot of data
             br.ReadBytes(0x0C);
