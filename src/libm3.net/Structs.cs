@@ -22,9 +22,11 @@
 using Sharp3D.Math.Core;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -316,6 +318,7 @@ namespace libm3
             XmlDocument doc = new XmlDocument();
             XmlNode node;
 
+            // XML declaration
             node = doc.CreateNode(XmlNodeType.XmlDeclaration, "", "");
             doc.AppendChild(node);
 
@@ -323,7 +326,7 @@ namespace libm3
             XmlElement root = doc.CreateElement("COLLADA");
             doc.AppendChild(root);
 
-            // Asset
+            // Model
             XML.Build(doc, this);
 
             // Set the namespace and version
@@ -342,375 +345,38 @@ namespace libm3
     }
 
     public static class XML
-    {
-        public static void BuildAsset(XmlDocument doc, String source)
-        {
-            XmlNode root = doc.SelectSingleNode("/COLLADA");
-            XmlElement assetElem = doc.CreateElement("asset");
-            root.AppendChild(assetElem);
-
-            XmlElement contributorElem = doc.CreateElement("contributor");
-            assetElem.AppendChild(contributorElem);
-
-            // Authoring tool
-            XmlElement toolElem = doc.CreateElement("authoring_tool");
-            XmlText toolText = doc.CreateTextNode("libm3");
-
-            contributorElem.AppendChild(toolElem);
-            toolElem.AppendChild(toolText);
-
-            // Source data
-            XmlElement sourceElem = doc.CreateElement("source_data");
-            XmlText sourceText = doc.CreateTextNode(source);
-
-            contributorElem.AppendChild(sourceElem);
-            sourceElem.AppendChild(sourceText);
-        }
-        private static void BuildVertexSource(XmlDocument doc, KeyValuePair<String, Geoset> geoset, List<Vertex> vertices)
-        {
-            XmlElement sourceElem;
-            XmlElement arrayElem;
-            XmlText arrayValues;
-            XmlElement tech_common;
-            XmlElement accessElem;
-            XmlElement param;
-            XmlElement vertsElem;
-            XmlElement inputElem;
-
-            XmlNode root = doc.SelectSingleNode("/COLLADA/library_geometries/geometry[@id='" + geoset.Key + "']/mesh");
-
-            Int32 first = geoset.Value.StartVertex;
-            Int32 count = geoset.Value.NumVertices;
-            Int32 last  = first + count;
-
-            // Position
-            sourceElem = doc.CreateElement("source");
-            sourceElem.SetAttribute("id", geoset.Key + "_position");
-            
-            arrayElem = doc.CreateElement("float_array");
-            arrayElem.SetAttribute("id", geoset.Key + "_position-array");
-            arrayElem.SetAttribute("count", Convert.ToString(count*3));
-
-            arrayValues = doc.CreateTextNode("\r\n");
-
-            tech_common = doc.CreateElement("technique_common");
-
-            accessElem = doc.CreateElement("accessor");
-            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
-            accessElem.SetAttribute("count", Convert.ToString(count));
-            accessElem.SetAttribute("stride", "3");
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "X");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "Y");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "Z");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            root.AppendChild(sourceElem);
-            sourceElem.AppendChild(arrayElem);
-            arrayElem.AppendChild(arrayValues);
-            sourceElem.AppendChild(tech_common);
-            tech_common.AppendChild(accessElem);
-
-            for (Int32 i = first; i < last; i++)
-            {
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Z) + "\r\n");
-            }
-
-            // Normal
-            sourceElem = doc.CreateElement("source");
-            sourceElem.SetAttribute("id", geoset.Key + "_normal");
-            
-            arrayElem = doc.CreateElement("float_array");
-            arrayElem.SetAttribute("id", geoset.Key + "_normal-array");
-            arrayElem.SetAttribute("count", Convert.ToString(count*3));
-
-            arrayValues = doc.CreateTextNode("\r\n");
-
-            tech_common = doc.CreateElement("technique_common");
-
-            accessElem = doc.CreateElement("accessor");
-            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
-            accessElem.SetAttribute("count", Convert.ToString(count));
-            accessElem.SetAttribute("stride", "3");
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "X");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "Y");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "Z");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            root.AppendChild(sourceElem);
-            sourceElem.AppendChild(arrayElem);
-            arrayElem.AppendChild(arrayValues);
-            sourceElem.AppendChild(tech_common);
-            tech_common.AppendChild(accessElem);
-
-            for (Int32 i = first; i < last; i++)
-            {
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Z) + "\r\n");
-            }
-
-            // UV
-            sourceElem = doc.CreateElement("source");
-            sourceElem.SetAttribute("id", geoset.Key + "_uv");
-            
-            arrayElem = doc.CreateElement("float_array");
-            arrayElem.SetAttribute("id", geoset.Key + "_uv-array");
-            arrayElem.SetAttribute("count", Convert.ToString(count*2));
-
-            arrayValues = doc.CreateTextNode("\r\n");
-
-            tech_common = doc.CreateElement("technique_common");
-
-            accessElem = doc.CreateElement("accessor");
-            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
-            accessElem.SetAttribute("count", Convert.ToString(count));
-            accessElem.SetAttribute("stride", "2");
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "S");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "T");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            root.AppendChild(sourceElem);
-            sourceElem.AppendChild(arrayElem);
-            arrayElem.AppendChild(arrayValues);
-            sourceElem.AppendChild(tech_common);
-            tech_common.AppendChild(accessElem);
-
-            for (Int32 i = first; i < last; i++)
-            {
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + "\r\n");
-            }
-
-            // Tangent
-            sourceElem = doc.CreateElement("source");
-            sourceElem.SetAttribute("id", geoset.Key + "_tangent");
-            
-            arrayElem = doc.CreateElement("float_array");
-            arrayElem.SetAttribute("id", geoset.Key + "_tangent-array");
-            arrayElem.SetAttribute("count", Convert.ToString(count*3));
-
-            arrayValues = doc.CreateTextNode("\r\n");
-
-            tech_common = doc.CreateElement("technique_common");
-
-            accessElem = doc.CreateElement("accessor");
-            accessElem.SetAttribute("source", "#" + arrayElem.GetAttribute("id"));
-            accessElem.SetAttribute("count", Convert.ToString(count));
-            accessElem.SetAttribute("stride", "3");
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "X");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "Y");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            param = doc.CreateElement("param");
-            param.SetAttribute("name", "Z");
-            param.SetAttribute("type", "float");
-
-            accessElem.AppendChild(param);
-
-            root.AppendChild(sourceElem);
-            sourceElem.AppendChild(arrayElem);
-            arrayElem.AppendChild(arrayValues);
-            sourceElem.AppendChild(tech_common);
-            tech_common.AppendChild(accessElem);
-
-            for (Int32 i = first; i < last; i++)
-            {
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.X) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Y) + " ");
-                arrayValues.AppendData(Convert.ToString(vertices[i].Position.Z) + "\r\n");
-            }
-
-            // <vertices>
-            vertsElem = doc.CreateElement("vertices");
-            vertsElem.SetAttribute("id", geoset.Key + "_vertex");
-
-            root.AppendChild(vertsElem);
-
-            // <vertices> : <input>
-            inputElem = doc.CreateElement("input");
-            inputElem.SetAttribute("source", "#" + geoset.Key + "_position");
-            inputElem.SetAttribute("semantic", "POSITION");
-
-            vertsElem.AppendChild(inputElem);
-        }
-        private static void BuildTriangles(XmlDocument doc, KeyValuePair<String, Geoset> geoset, List<Face> triangles)
-        {
-            XmlElement triElem;
-            XmlElement triEntryElem;
-            XmlText triValues;
-            XmlElement inputElem;
-
-            XmlNode root = doc.SelectSingleNode("/COLLADA/library_geometries/geometry[@id='" + geoset.Key + "']/mesh");
-
-            Int32 first = geoset.Value.StartTriangle;
-            Int32 count = geoset.Value.NumTriangles;
-            Int32 last = first + count;
-
-            // <triangles>
-            triElem = doc.CreateElement("triangles");
-            triElem.SetAttribute("count", Convert.ToString(count));
-
-            root.AppendChild(triElem);
-
-            // <vertices> : <input>
-            inputElem = doc.CreateElement("input");
-            inputElem.SetAttribute("source", "#" + geoset.Key + "_vertex");
-            inputElem.SetAttribute("semantic", "VERTEX");
-            inputElem.SetAttribute("offset", "0");
-
-            triElem.AppendChild(inputElem);
-            /*
-            inputElem = doc.CreateElement("input");
-            inputElem.SetAttribute("source", "#" + geoset.Key + "_normal");
-            inputElem.SetAttribute("semantic", "NORMAL");
-            inputElem.SetAttribute("offset", "1");
-
-            triElem.AppendChild(inputElem);
-
-            inputElem = doc.CreateElement("input");
-            inputElem.SetAttribute("source", "#" + geoset.Key + "_uv");
-            inputElem.SetAttribute("semantic", "TEXCOORD");
-            inputElem.SetAttribute("offset", "2");
-
-            triElem.AppendChild(inputElem);
-            
-            inputElem = doc.CreateElement("input");
-            inputElem.SetAttribute("source", "#" + geo.Key + "_tangent");
-            inputElem.SetAttribute("semantic", "TEXTANGENT");
-            inputElem.SetAttribute("offset", "3");
-            
-            triElem.AppendChild(inputElem);
-            */
-            triEntryElem = doc.CreateElement("p");
-            triValues = doc.CreateTextNode("\r\n");
-
-            triEntryElem.AppendChild(triValues);
-            triElem.AppendChild(triEntryElem);
-
-            for (Int32 i = first; i < last; i++)
-            {
-                triValues.AppendData(Convert.ToString(triangles[i].Vertices[0] - geoset.Value.StartVertex) + " ");
-
-                triValues.AppendData(Convert.ToString(triangles[i].Vertices[1] - geoset.Value.StartVertex) + " ");
-
-                triValues.AppendData(Convert.ToString(triangles[i].Vertices[2] - geoset.Value.StartVertex) + "\r\n");
-            }
-        }
-        public static void BuildGeoset(XmlDocument doc, KeyValuePair<String, Geoset> geoset, List<Vertex> vertices, List<Face> triangles)
-        {
-            XmlElement elGeometry;
-
-            XmlNode root = doc.SelectSingleNode("/COLLADA/library_geometries");
-
-            // <geometry>
-            elGeometry = doc.CreateElement("geometry");
-            elGeometry.SetAttribute("id", geoset.Key);
-
-            root.AppendChild(elGeometry);
-
-            // <mesh>
-            elGeometry.AppendChild(doc.CreateElement("mesh"));
-            XML.BuildVertexSource(doc, geoset, vertices);
-            XML.BuildTriangles(doc, geoset, triangles);
-        }
-        public static void BuildVisualScene(XmlDocument doc)
-        {
-            XmlElement elVisualScene;
-            XmlElement elNode;
-            XmlElement elGeometry;
-
-            XmlNode root = doc.SelectSingleNode("/COLLADA").AppendChild(doc.CreateElement("library_visual_scenes"));
-            XmlNodeList elements;
-
-            elVisualScene = doc.CreateElement("visual_scene");
-            elVisualScene.SetAttribute("id", "RootNode");
-
-            root.AppendChild(elVisualScene);
-
-            elements = doc.SelectNodes("/COLLADA/library_geometries/geometry");
-            foreach (XmlElement el in elements)
-            {
-                elNode = doc.CreateElement("node");
-                elVisualScene.AppendChild(elNode);
-
-                elGeometry = doc.CreateElement("instance_geometry");
-                elGeometry.SetAttribute("url", "#" + el.GetAttribute("id"));
-                elNode.AppendChild(elGeometry);
-            }
-        }
-        public static void BuildScene(XmlDocument doc)
-        {
-            XmlNodeList VisualSceneList = doc.SelectNodes("/COLLADA/library_visual_scenes/visual_scene");
-            XmlNode root = doc.SelectSingleNode("/COLLADA").AppendChild(doc.CreateElement("scene"));
-
-            foreach (XmlElement el in VisualSceneList)
-            {
-                XmlElement elSceneNode = doc.CreateElement("instance_visual_scene");
-                root.AppendChild(elSceneNode);
-                elSceneNode.SetAttribute("url", "#" + el.GetAttribute("id"));
-            }
-        }
-        
+    {        
         // Extension functions
-        public static XmlNode GetElementByAttribute(this XmlNode node, String tag, String attribute, String value)
+        public static XmlNode GetElementByAttribute(this XmlNode node, String attribute, String value)
         {
-            return node.SelectSingleNode("/" + tag + "[@" + attribute + "=" + value + "]");
+            return node.SelectSingleNode("/*[@" + attribute + "=" + value + "]");
+        }
+        public static XmlNodeList GetElementsByAttribute(this XmlNode node, String attribute, String value)
+        {
+            return node.SelectNodes("/*[@" + attribute + "=" + value + "]");
         }
 
-        // Build geoset
+        // Build XML
         public static void Build(XmlDocument doc, Model model)
         {
+            // Set locale for correct group separator
+            String originalCulture = CultureInfo.CurrentCulture.ToString();
+            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
+            
+            // Do the XML
             XmlElement el;
             XmlNode root = doc.SelectSingleNode("/COLLADA");
 
+            // Write metadata
+            XmlNode asset = root.AppendChild(doc.CreateElement("asset"));
+            XmlNode created = asset.AppendChild(doc.CreateElement("created"));
+            created.AppendChild(doc.CreateTextNode(DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")));
+            XmlNode modified = asset.AppendChild(doc.CreateElement("modified"));
+            modified.AppendChild(doc.CreateTextNode(DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")));
+            XmlNode up_axis = asset.AppendChild(doc.CreateElement("up_axis"));
+            up_axis.AppendChild(doc.CreateTextNode("Y_UP"));
+
+            // Write data
             root.AppendChild(doc.CreateElement("library_geometries"));
             root.AppendChild(doc.CreateElement("library_visual_scenes")).AppendChild(doc.CreateElement("visual_scene"));
             root.AppendChild(doc.CreateElement("scene"));
@@ -723,7 +389,161 @@ namespace libm3
             {
                 XmlElement geometry = (XmlElement)doc.SelectSingleNode("/COLLADA/library_geometries").AppendChild(doc.CreateElement("geometry"));
                 geometry.SetAttribute("id", "geoset" + count);
-                geometry.AppendChild(doc.CreateElement("mesh"));
+                XmlElement mesh = (XmlElement)geometry.AppendChild(doc.CreateElement("mesh"));
+                {
+                    // Position
+                    {
+                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
+                        source.SetAttribute("id", "geoset" + count + "_position");
+                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
+                        array.SetAttribute("id","geoset" + count + "_position-array");
+                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 3));
+                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
+                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
+                        {
+                            values.AppendData(Convert.ToString(model.Vertices[i].Position.X) + " ");
+                            values.AppendData(Convert.ToString(model.Vertices[i].Position.Y) + " ");
+                            values.AppendData(Convert.ToString(model.Vertices[i].Position.Z) + "\r\n");
+                        }
+                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
+                        accessor.SetAttribute("source", "#geoset" + count + "_position-array");
+                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
+                        accessor.SetAttribute("stride", "3");
+                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "X");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "Y");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "Z");
+                        param.SetAttribute("type", "float");
+                    }
+
+                    // Normal
+                    {
+                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
+                        source.SetAttribute("id", "geoset" + count + "_normal");
+                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
+                        array.SetAttribute("id", "geoset" + count + "_normal-array");
+                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 3));
+                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
+                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
+                        {
+                            values.AppendData(Convert.ToString(model.Vertices[i].Normal.X) + " ");
+                            values.AppendData(Convert.ToString(model.Vertices[i].Normal.Y) + " ");
+                            values.AppendData(Convert.ToString(model.Vertices[i].Normal.Z) + "\r\n");
+                        }
+                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
+                        accessor.SetAttribute("source", "#geoset" + count + "_normal-array");
+                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
+                        accessor.SetAttribute("stride", "3");
+                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "X");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "Y");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "Z");
+                        param.SetAttribute("type", "float");
+                    }
+
+                    // UV
+                    {
+                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
+                        source.SetAttribute("id", "geoset" + count + "_uv");
+                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
+                        array.SetAttribute("id", "geoset" + count + "_uv-array");
+                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 2));
+                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
+                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
+                        {
+                            values.AppendData(Convert.ToString(model.Vertices[i].UV.X) + " ");
+                            values.AppendData(Convert.ToString(model.Vertices[i].UV.Y) + "\r\n");
+                        }
+                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
+                        accessor.SetAttribute("source", "#geoset" + count + "_uv-array");
+                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
+                        accessor.SetAttribute("stride", "2");
+                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "S");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "T");
+                        param.SetAttribute("type", "float");
+                    }
+
+                    // Tangents
+                    {
+                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
+                        source.SetAttribute("id", "geoset" + count + "_tangent");
+                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
+                        array.SetAttribute("id", "geoset" + count + "_tangent-array");
+                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 2));
+                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
+                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
+                        {
+                            values.AppendData(Convert.ToString(model.Vertices[i].UV.X) + " ");
+                            values.AppendData(Convert.ToString(model.Vertices[i].UV.Y) + "\r\n");
+                        }
+                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
+                        accessor.SetAttribute("source", "#geoset" + count + "_tangent-array");
+                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
+                        accessor.SetAttribute("stride", "3");
+                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "X");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "Y");
+                        param.SetAttribute("type", "float");
+                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
+                        param.SetAttribute("name", "Z");
+                        param.SetAttribute("type", "float");
+                    }
+
+                    XmlElement vertices = (XmlElement)mesh.AppendChild(doc.CreateElement("vertices"));
+                    vertices.SetAttribute("id", "#geoset" + count + "_vertex");
+                    XmlElement input = (XmlElement)vertices.AppendChild(doc.CreateElement("input"));
+                    input.SetAttribute("semantic", "POSITION");
+                    input.SetAttribute("source", "#geoset" + count + "_position");
+                    XmlElement triangles = (XmlElement)mesh.AppendChild(doc.CreateElement("triangles"));
+                    triangles.SetAttribute("count", Convert.ToString(set.NumTriangles));
+                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
+                    input.SetAttribute("semantic", "VERTEX");
+                    input.SetAttribute("source", "#geoset" + count + "_vertex");
+                    input.SetAttribute("offset", "0");
+                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
+                    input.SetAttribute("semantic", "NORMAL");
+                    input.SetAttribute("source", "#geoset" + count + "_normal");
+                    input.SetAttribute("offset", "1");
+                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
+                    input.SetAttribute("semantic", "TEXCOORD");
+                    input.SetAttribute("source", "#geoset" + count + "_uv");
+                    input.SetAttribute("offset", "2");
+                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
+                    input.SetAttribute("semantic", "TEXTANGENT");
+                    input.SetAttribute("source", "#geoset" + count + "_tangent");
+                    input.SetAttribute("offset", "3");
+                    XmlText p = (XmlText)triangles.AppendChild(doc.CreateElement("p")).AppendChild(doc.CreateTextNode("\r\n"));
+                    for (Int32 i = set.StartTriangle; i < set.StartTriangle + set.NumTriangles; i++)
+                    {
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
+
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
+
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + "\r\n");
+                    }
+                }
                 XmlElement node = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene").AppendChild(doc.CreateElement("node"));
                 node.SetAttribute("id", "geoset" + count + "_node");
                 XmlElement instance_geometry = (XmlElement)node.AppendChild(doc.CreateElement("instance_geometry"));
@@ -733,17 +553,20 @@ namespace libm3
 
             XmlElement instance_visual_scene = (XmlElement)doc.SelectSingleNode("/COLLADA/scene").AppendChild(doc.CreateElement("instance_visual_scene"));
             instance_visual_scene.SetAttribute("url", "#RootNode");
+
+            // Restore the locale
+            Thread.CurrentThread.CurrentCulture = new CultureInfo(originalCulture);
         }
     }
 
     public class Vertex
     {
-        public Vector3D Position;
-        public Vector4D Normal;
-        public Vector2D UV;
-        public Vector4D Tangent;
+        public Vector3F Position;
+        public Vector4F Normal;
+        public Vector2F UV;
+        public Vector4F Tangent;
         public UInt32[] BoneIndex;
-        public Double[] BoneWeight;
+        public Single[] BoneWeight;
 
         public static Vertex ReadVertex(BinaryReader br, UInt32 flags)
         {
@@ -757,23 +580,23 @@ namespace libm3
             // Bones
             Byte[] weight = br.ReadBytes(4);
             Byte[] index = br.ReadBytes(4);
-            v.BoneWeight = new Double[4];
+            v.BoneWeight = new Single[4];
             v.BoneIndex = new UInt32[4];
             for (Int32 i = 0; i < 4; i++)
             {
                 v.BoneIndex[i] = index[i];
-                v.BoneWeight[i] = weight[i] / 255.0d;
+                v.BoneWeight[i] = weight[i] / 255.0f;
             }
             
             // Normal
-            v.Normal.X = 2 * br.ReadByte() / 255.0d - 1;
-            v.Normal.Y = 2 * br.ReadByte() / 255.0d - 1;
-            v.Normal.Z = 2 * br.ReadByte() / 255.0d - 1;
-            v.Normal.W = br.ReadByte() / 255.0d;
+            v.Normal.X = 2 * br.ReadByte() / 255.0f - 1;
+            v.Normal.Y = 2 * br.ReadByte() / 255.0f - 1;
+            v.Normal.Z = 2 * br.ReadByte() / 255.0f - 1;
+            v.Normal.W = br.ReadByte() / 255.0f;
             
             // UV coords
-            v.UV.X =  br.ReadInt16() / 2048.0d;
-            v.UV.Y = -br.ReadInt16() / 2048.0d;
+            v.UV.X =  br.ReadInt16() / 2048.0f;
+            v.UV.Y = -br.ReadInt16() / 2048.0f;
             
             // Skip extra value
             if ((flags & 0x40000) != 0)
@@ -783,10 +606,10 @@ namespace libm3
             }
             
             // Tangent
-            v.Tangent.X = 2 * br.ReadByte() / 255.0d - 1;
-            v.Tangent.Y = 2 * br.ReadByte() / 255.0d - 1;
-            v.Tangent.Z = 2 * br.ReadByte() / 255.0d - 1;
-            v.Tangent.W = br.ReadByte() / 255.0d;
+            v.Tangent.X = 2 * br.ReadByte() / 255.0f - 1;
+            v.Tangent.Y = 2 * br.ReadByte() / 255.0f - 1;
+            v.Tangent.Z = 2 * br.ReadByte() / 255.0f - 1;
+            v.Tangent.W = br.ReadByte() / 255.0f;
             
             return v;
         }
@@ -794,9 +617,9 @@ namespace libm3
         public static void WriteVertex(BinaryWriter bw, UInt32 flags, Vertex v)
         {
             // Position vector
-            bw.Write((Single)v.Position.X);
-            bw.Write((Single)v.Position.Y);
-            bw.Write((Single)v.Position.Z);
+            bw.Write(v.Position.X);
+            bw.Write(v.Position.Y);
+            bw.Write(v.Position.Z);
 
             // Bones
             foreach (Double weight in v.BoneWeight)
@@ -812,7 +635,7 @@ namespace libm3
             bw.Write((Byte)(Byte.MaxValue * (v.Normal.X + 1) / 2));
             bw.Write((Byte)(Byte.MaxValue * (v.Normal.Y + 1) / 2));
             bw.Write((Byte)(Byte.MaxValue * (v.Normal.Z + 1) / 2));
-            bw.Write((Byte)(v.Normal.W * Byte.MaxValue));
+            bw.Write((Byte)(Byte.MaxValue * v.Normal.W));
 
             // UV coords
             bw.Write((Int16)(v.UV.X * 2048.0d));
@@ -825,10 +648,10 @@ namespace libm3
             }
 
             // Tangent
-            bw.Write((Byte)0);
-            bw.Write((Byte)0);
-            bw.Write((Byte)0);
-            bw.Write((Byte)0);
+            bw.Write((Byte)(Byte.MaxValue * (v.Tangent.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * (v.Tangent.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * (v.Tangent.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * v.Tangent.X));
         }
     }
 
