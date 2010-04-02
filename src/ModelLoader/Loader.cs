@@ -15,7 +15,7 @@ namespace ModelLoader
             BinaryReader br = new BinaryReader(fs);
 
             // Read header
-            MD33 head = MD33.ReadMD33(br);
+            MD33 head = new MD33(br);
 
             // Read the tags
             fs.Seek(head.OfsRefs, SeekOrigin.Begin);
@@ -23,7 +23,7 @@ namespace ModelLoader
             List<Tag> lstTag = new List<Tag>();
             for(Int32 i = 0; i < head.NumRefs; i++)
             {
-                lstTag.Add(Tag.ReadTag(br));
+                lstTag.Add(new Tag(br));
             }
 
             // Read the model
@@ -31,7 +31,7 @@ namespace ModelLoader
 
             Model m = Model.ReadModel(fs, br, lstTag[head.Model.Tag].Type, lstTag);
 
-            m.ToXML();
+            m.ToM3();
         }
     }
 }

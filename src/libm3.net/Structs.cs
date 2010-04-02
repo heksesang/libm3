@@ -32,93 +32,173 @@ using System.Xml.Linq;
 
 namespace libm3
 {
-    public struct MD33
+    public static class Extentions
+    {
+    }
+
+    public interface ISerializable
+    {
+        String TagId;
+        Int32 TagType;
+
+        void Queue(List<ISerializable> queue);
+        void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist);
+    }
+
+    public struct MD33 : ISerializable
     {
         /*0x00*/ public String Magic;
         /*0x04*/ public Int32 OfsRefs;
         /*0x08*/ public Int32 NumRefs;
         /*0x0C*/ public TagRef Model;
 
-        public static MD33 ReadMD33(BinaryReader br)
+        public MD33(BinaryReader br)
         {
-            MD33 head = new MD33();
-            head.Magic = Encoding.ASCII.GetString(br.ReadBytes(4));
-            head.OfsRefs = br.ReadInt32();
-            head.NumRefs = br.ReadInt32();
-            head.Model = TagRef.ReadTagRef(br);
-            return head;
+            Magic = Encoding.ASCII.GetString(br.ReadBytes(4));
+            OfsRefs = br.ReadInt32();
+            NumRefs = br.ReadInt32();
+            Model = new TagRef(br);
+        }
+        public MD33(Int32 ofsRefs, Int32 numRefs, TagRef model)
+        {
+            Magic = "33DM";
+            OfsRefs = ofsRefs;
+            NumRefs = numRefs;
+            Model = model;
         }
 
-        public static void WriteMD33(BinaryWriter bw, MD33 head)
+        #region ISerializable Members
+
+        public void Queue(List<ISerializable> queue)
         {
-            bw.Write(head.Magic.ToCharArray(0, 4));
-            bw.Write(head.OfsRefs);
-            bw.Write(head.NumRefs);
-            bw.Write(head.Model.NumEntries);
-            bw.Write(head.Model.Tag);
+            queue.Add(this);
         }
+
+        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
+        {
+            if (taglist[taglist.Count - 1].Id != "33DM")
+            {
+                taglist.Add(new Tag("33DM", (Int32)fs.Position, 1, 11));
+            }
+            else
+            {
+                Tag t = taglist[taglist.Count - 1];
+                t.NumEntries++;
+                taglist[taglist.Count - 1] = t;
+            }
+
+            bw.Write(Magic.ToCharArray(0, 4));
+            bw.Write(OfsRefs);
+            bw.Write(NumRefs);
+            bw.Write(Model.NumEntries);
+            bw.Write(Model.Tag);
+        }
+
+        #endregion
     }
 
-    public struct AnimRef
+    public struct AnimRef : ISerializable
     {
         /*0x00*/ public UInt32 Flags;
         /*0x04*/ public UInt32 AnimId;
 
-        public static AnimRef ReadAnimRef(BinaryReader br)
+        public AnimRef(BinaryReader br)
         {
-            AnimRef aref = new AnimRef();
-
-            aref.Flags = br.ReadUInt32();
-            aref.AnimId = br.ReadUInt32();
-
-            return aref;
+            Flags = br.ReadUInt32();
+            AnimId = br.ReadUInt32();
         }
+        public AnimRef(UInt32 animId, UInt32 flags)
+        {
+            Flags = flags;
+            AnimId = animId;
+        }
+
+        #region ISerializable Members
+
+        public void Queue(List<ISerializable> queue)
+        {
+            queue.Add(this);
+        }
+
+        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
+        {
+            bw.Write(Flags);
+            bw.Write(AnimId);
+        }
+
+        #endregion
     }
 
-    public struct TagRef
+    public struct TagRef : ISerializable
     {
         /*0x00*/ public Int32 NumEntries;
         /*0x04*/ public Int32 Tag;
 
-        public static TagRef ReadTagRef(BinaryReader br)
+        public TagRef(BinaryReader br)
         {
-            TagRef t = new TagRef();
-            t.NumEntries = br.ReadInt32();
-            t.Tag = br.ReadInt32();
-            return t;
+            NumEntries = br.ReadInt32();
+            Tag = br.ReadInt32();
+        }
+        public TagRef(Int32 numEntries, Int32 tag)
+        {
+            NumEntries = numEntries;
+            Tag = tag;
         }
 
-        public static void WriteTagRef(BinaryWriter bw, TagRef tr)
+        #region ISerializable Members
+
+        public void Queue(List<ISerializable> queue)
         {
-            bw.Write(tr.NumEntries);
-            bw.Write(tr.Tag);
+            queue.Add(this);
         }
+
+        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
+        {
+            bw.Write(NumEntries);
+            bw.Write(Tag);
+        }
+
+        #endregion
     }
 
-    public struct Tag
+    public struct Tag : ISerializable
     {
         /*0x00*/ public String Id;
-        /*0x04*/ public UInt32 Offset;
-        /*0x08*/ public UInt32 NumEntries;
-        /*0x0C*/ public UInt32 Type;
+        /*0x04*/ public Int32 Offset;
+        /*0x08*/ public Int32 NumEntries;
+        /*0x0C*/ public Int32 Type;
 
-        public static Tag ReadTag(BinaryReader br)
+        public Tag(BinaryReader br)
         {
-            Tag t = new Tag();
-            t.Id = Encoding.ASCII.GetString(br.ReadBytes(4));
-            t.Offset = br.ReadUInt32();
-            t.NumEntries = br.ReadUInt32();
-            t.Type = br.ReadUInt32();
-            return t;
+            Id = Encoding.ASCII.GetString(br.ReadBytes(4));
+            Offset = br.ReadInt32();
+            NumEntries = br.ReadInt32();
+            Type = br.ReadInt32();
+        }
+        public Tag(String id, Int32 offset, Int32 numEntries, Int32 type)
+        {
+            Id = id;
+            Offset = offset;
+            NumEntries = numEntries;
+            Type = type;
         }
 
-        public static void WriteTag(BinaryWriter bw, Tag t)
+        #region ISerializable Members
+
+        public void Queue(List<ISerializable> queue)
         {
-            bw.Write(t.Id.ToCharArray(0, 4));
-            bw.Write(t.Offset);
-            bw.Write(t.NumEntries);
-            bw.Write(t.Type);
+            queue.Add(this);
         }
+
+        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
+        {
+            bw.Write(Id.ToCharArray(0, 4));
+            bw.Write(Offset);
+            bw.Write(NumEntries);
+            bw.Write(Type);
+        }
+
+        #endregion
     }
 
     public class Model
@@ -129,6 +209,7 @@ namespace libm3
         public List<Vertex> Vertices;
         public List<Face> Faces;
         public List<Bone> Bones;
+        public List<UInt16> BoneList;
         public List<Geoset> Geosets;
         public List<Material> Materials;
         public List<MaterialGroup> MaterialGroups;
@@ -136,13 +217,13 @@ namespace libm3
         public Vector3D[] VertexExtents;
         public Double VertexRadius;
 
-        public static Model ReadModel(FileStream fs, BinaryReader br, UInt32 type, List<Tag> tags)
+        public static Model ReadModel(FileStream fs, BinaryReader br, Int32 type, List<Tag> tags)
         {
             Model m = new Model();
             List<Int64> lstPos = new List<Int64>();
 
             // Read name
-            TagRef refName = TagRef.ReadTagRef(br);
+            TagRef refName = new TagRef(br);
             
             lstPos.Add(fs.Position);
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
@@ -159,7 +240,7 @@ namespace libm3
             br.ReadBytes(0x2C);
 
             // Read bones
-            TagRef refBone = TagRef.ReadTagRef(br);
+            TagRef refBone = new TagRef(br);
 
             lstPos.Add(fs.Position);
             fs.Seek(tags[refBone.Tag].Offset, SeekOrigin.Begin);
@@ -181,7 +262,7 @@ namespace libm3
             m.Flags = br.ReadUInt32();
 
             // Read vertices
-            TagRef refVertex = TagRef.ReadTagRef(br);
+            TagRef refVertex = new TagRef(br);
             
             lstPos.Add(fs.Position);
             fs.Seek(tags[refVertex.Tag].Offset, SeekOrigin.Begin);
@@ -190,19 +271,19 @@ namespace libm3
 
             while (tags[refVertex.Tag].Offset + tags[refVertex.Tag].NumEntries != fs.Position)
             {
-                m.Vertices.Add(Vertex.ReadVertex(br, m.Flags));
+                m.Vertices.Add(new Vertex(br, m.Flags));
             }
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
             // Geometry
-            TagRef refDiv = TagRef.ReadTagRef(br);
+            TagRef refDiv = new TagRef(br);
             
             lstPos.Add(fs.Position);
             fs.Seek(tags[refDiv.Tag].Offset, SeekOrigin.Begin);
 
-            TagRef refFace = TagRef.ReadTagRef(br);
+            TagRef refFace = new TagRef(br);
             lstPos.Add(fs.Position);
             fs.Seek(tags[refFace.Tag].Offset, SeekOrigin.Begin);
 
@@ -210,13 +291,13 @@ namespace libm3
 
             for (int i = 0; i < refFace.NumEntries; i+=3)
             {
-                m.Faces.Add(Face.ReadFace(br));
+                m.Faces.Add(new Face(br));
             }
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
-            TagRef refGeoset = TagRef.ReadTagRef(br);
+            TagRef refGeoset = new TagRef(br);
             lstPos.Add(fs.Position);
             fs.Seek(tags[refGeoset.Tag].Offset, SeekOrigin.Begin);
 
@@ -224,13 +305,13 @@ namespace libm3
 
             for (int i = 0; i < refGeoset.NumEntries; i++)
             {
-                m.Geosets.Add(Geoset.ReadGeoset(br));
+                m.Geosets.Add(new Geoset(br));
             }
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
-            TagRef refMatBind = TagRef.ReadTagRef(br);
+            TagRef refMatBind = new TagRef(br);
             lstPos.Add(fs.Position);
             fs.Seek(tags[refMatBind.Tag].Offset, SeekOrigin.Begin);
 
@@ -280,7 +361,7 @@ namespace libm3
                 br.ReadBytes(0x08);
 
             // Materials
-            TagRef refMatGroups = TagRef.ReadTagRef(br);
+            TagRef refMatGroups = new TagRef(br);
 
             lstPos.Add(fs.Position);
             fs.Seek(tags[refMatGroups.Tag].Offset, SeekOrigin.Begin);
@@ -295,7 +376,7 @@ namespace libm3
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
-            TagRef refMats = TagRef.ReadTagRef(br);
+            TagRef refMats = new TagRef(br);
             
             lstPos.Add(fs.Position);
             fs.Seek(tags[refMats.Tag].Offset, SeekOrigin.Begin);
@@ -342,20 +423,59 @@ namespace libm3
                 Console.WriteLine(e.Message);
             }
         }
+        public void ToM3()
+        {
+            FileStream fs = new FileStream("C:\\Release\\test.m3", FileMode.Create);
+            BinaryWriter bw = new BinaryWriter(fs);
+            List<Tag> taglist = new List<Tag>();
+            List< List<ISerializable> > objects = new List< List<ISerializable> >();
+            
+            Tag tag;
+            TagRef tagref;
+
+            foreach (ISerializable obj in Vertices)
+            {
+            }
+
+            foreach (ISerializable obj in objects)
+            {
+                obj.Write(fs, bw, taglist);
+
+                if (fs.Position % 0x10 != 0)
+                {
+                    Int32 numBytes = 0x10 - (Int32)(fs.Position % 0x10);
+                    for (Int32 i = 0; i < numBytes; i++)
+                    {
+                        bw.Write((Byte)0xAA);
+                    }
+                }
+            }
+
+            foreach (ISerializable obj in objects)
+            {
+                if (taglist.Count == 0 || taglist[taglist.Count - 1].Id != "__8U")
+                {
+                    taglist.Add(new Tag("__8U", (Int32)fs.Position, 1, 0));
+                }
+                else
+                {
+                    Tag t = taglist[taglist.Count - 1];
+                    t.NumEntries++;
+                    taglist[taglist.Count - 1] = t;
+                }
+
+                obj.Write(fs, bw, taglist);
+            }
+            
+            foreach (Tag t in taglist)
+            {
+                t.Write(fs, bw, taglist);
+            }
+        }
     }
 
     public static class XML
-    {        
-        // Extension functions
-        public static XmlNode GetElementByAttribute(this XmlNode node, String attribute, String value)
-        {
-            return node.SelectSingleNode("/*[@" + attribute + "=" + value + "]");
-        }
-        public static XmlNodeList GetElementsByAttribute(this XmlNode node, String attribute, String value)
-        {
-            return node.SelectNodes("/*[@" + attribute + "=" + value + "]");
-        }
-
+    {
         // Build XML
         public static void Build(XmlDocument doc, Model model)
         {
@@ -380,6 +500,9 @@ namespace libm3
             root.AppendChild(doc.CreateElement("library_geometries"));
             root.AppendChild(doc.CreateElement("library_visual_scenes")).AppendChild(doc.CreateElement("visual_scene"));
             root.AppendChild(doc.CreateElement("scene"));
+            root.AppendChild(doc.CreateElement("library_effects"));
+            root.AppendChild(doc.CreateElement("library_materials"));
+            root.AppendChild(doc.CreateElement("library_controllers"));
 
             el = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene");
             el.SetAttribute("id", "RootNode");
@@ -559,8 +682,9 @@ namespace libm3
         }
     }
 
-    public class Vertex
+    public class Vertex : ISerializable
     {
+        public UInt32 Flags;
         public Vector3F Position;
         public Vector4F Normal;
         public Vector2F UV;
@@ -568,109 +692,152 @@ namespace libm3
         public UInt32[] BoneIndex;
         public Single[] BoneWeight;
 
-        public static Vertex ReadVertex(BinaryReader br, UInt32 flags)
+        public Vertex(BinaryReader br, UInt32 flags)
         {
-            Vertex v = new Vertex();
-            
             // Position
-            v.Position.X = br.ReadSingle();
-            v.Position.Y = br.ReadSingle();
-            v.Position.Z = br.ReadSingle();
+            Position.X = br.ReadSingle();
+            Position.Y = br.ReadSingle();
+            Position.Z = br.ReadSingle();
 
             // Bones
             Byte[] weight = br.ReadBytes(4);
             Byte[] index = br.ReadBytes(4);
-            v.BoneWeight = new Single[4];
-            v.BoneIndex = new UInt32[4];
+            BoneWeight = new Single[4];
+            BoneIndex = new UInt32[4];
             for (Int32 i = 0; i < 4; i++)
             {
-                v.BoneIndex[i] = index[i];
-                v.BoneWeight[i] = weight[i] / 255.0f;
+                BoneIndex[i] = index[i];
+                BoneWeight[i] = weight[i] / 255.0f;
             }
-            
+
             // Normal
-            v.Normal.X = 2 * br.ReadByte() / 255.0f - 1;
-            v.Normal.Y = 2 * br.ReadByte() / 255.0f - 1;
-            v.Normal.Z = 2 * br.ReadByte() / 255.0f - 1;
-            v.Normal.W = br.ReadByte() / 255.0f;
-            
+            Normal.X = 2 * br.ReadByte() / 255.0f - 1;
+            Normal.Y = 2 * br.ReadByte() / 255.0f - 1;
+            Normal.Z = 2 * br.ReadByte() / 255.0f - 1;
+            Normal.W = br.ReadByte() / 255.0f;
+
             // UV coords
-            v.UV.X =  br.ReadInt16() / 2048.0f;
-            v.UV.Y = -br.ReadInt16() / 2048.0f;
-            
+            UV.X = br.ReadInt16() / 2048.0f;
+            UV.Y = -br.ReadInt16() / 2048.0f;
+
             // Skip extra value
             if ((flags & 0x40000) != 0)
             {
                 // Skip 4 bytes if flags & 0x40000
                 br.ReadBytes(4);
             }
-            
+
             // Tangent
-            v.Tangent.X = 2 * br.ReadByte() / 255.0f - 1;
-            v.Tangent.Y = 2 * br.ReadByte() / 255.0f - 1;
-            v.Tangent.Z = 2 * br.ReadByte() / 255.0f - 1;
-            v.Tangent.W = br.ReadByte() / 255.0f;
-            
-            return v;
+            Tangent.X = 2 * br.ReadByte() / 255.0f - 1;
+            Tangent.Y = 2 * br.ReadByte() / 255.0f - 1;
+            Tangent.Z = 2 * br.ReadByte() / 255.0f - 1;
+            Tangent.W = br.ReadByte() / 255.0f;
+        }
+        public Vertex() { }
+
+        #region ISerializable Members
+
+        public void Queue(List<ISerializable> queue)
+        {
+            queue.Add(this);
         }
 
-        public static void WriteVertex(BinaryWriter bw, UInt32 flags, Vertex v)
+        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
         {
+            if (taglist.Count == 0 || taglist[taglist.Count - 1].Id != "__8U")
+            {
+                taglist.Add(new Tag("__8U", (Int32)fs.Position, 1, 0));
+            }
+            else
+            {
+                Tag t = taglist[taglist.Count - 1];
+                t.NumEntries++;
+                taglist[taglist.Count - 1] = t;
+            }
+
             // Position vector
-            bw.Write(v.Position.X);
-            bw.Write(v.Position.Y);
-            bw.Write(v.Position.Z);
+            bw.Write(Position.X);
+            bw.Write(Position.Y);
+            bw.Write(Position.Z);
 
             // Bones
-            foreach (Double weight in v.BoneWeight)
+            foreach (Double weight in BoneWeight)
             {
                 bw.Write((Byte)(weight * Byte.MaxValue));
             }
-            foreach (UInt32 index in v.BoneIndex)
+            foreach (UInt32 index in BoneIndex)
             {
                 bw.Write((Byte)index);
             }
 
             // Normal
-            bw.Write((Byte)(Byte.MaxValue * (v.Normal.X + 1) / 2));
-            bw.Write((Byte)(Byte.MaxValue * (v.Normal.Y + 1) / 2));
-            bw.Write((Byte)(Byte.MaxValue * (v.Normal.Z + 1) / 2));
-            bw.Write((Byte)(Byte.MaxValue * v.Normal.W));
+            bw.Write((Byte)(Byte.MaxValue * (Normal.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * (Normal.Y + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * (Normal.Z + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * Normal.W));
 
             // UV coords
-            bw.Write((Int16)(v.UV.X * 2048.0d));
-            bw.Write((Int16)(-v.UV.Y * 2048.0d));
-            
+            bw.Write((Int16)(UV.X * 2048.0d));
+            bw.Write((Int16)(-UV.Y * 2048.0d));
+
             // Unknown
-            if ((flags & 0x40000) != 0)
+            if ((Flags & 0x40000) != 0)
             {
                 bw.Write(0);
             }
 
             // Tangent
-            bw.Write((Byte)(Byte.MaxValue * (v.Tangent.X + 1) / 2));
-            bw.Write((Byte)(Byte.MaxValue * (v.Tangent.X + 1) / 2));
-            bw.Write((Byte)(Byte.MaxValue * (v.Tangent.X + 1) / 2));
-            bw.Write((Byte)(Byte.MaxValue * v.Tangent.X));
+            bw.Write((Byte)(Byte.MaxValue * (Tangent.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * (Tangent.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * (Tangent.X + 1) / 2));
+            bw.Write((Byte)(Byte.MaxValue * Tangent.X));
         }
+
+        #endregion
     }
 
-    public class Face
+    public class Face : ISerializable
     {
         public Int16[] Vertices;
 
-        public static Face ReadFace(BinaryReader br)
+        public Face(BinaryReader br)
         {
-            Face f = new Face();
-            f.Vertices = new Int16[3];
+            Vertices = new Int16[3];
 
             for (Int16 i = 0; i < 3; i++)
             {
-                f.Vertices[i] = br.ReadInt16();
+                Vertices[i] = br.ReadInt16();
+            }
+        }
+        public Face() { }
+
+        #region ISerializable Members
+
+        public void Queue(List<ISerializable> queue)
+        {
+            queue.Add(this);
+        }
+
+        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
+        {
+            if (taglist[taglist.Count - 1].Id != "_61U")
+            {
+                taglist.Add(new Tag("_61U", (Int32)fs.Position, 3, 0));
+            }
+            else
+            {
+                Tag t = taglist[taglist.Count - 1];
+                t.NumEntries+=3;
+                taglist[taglist.Count - 1] = t;
             }
 
-            return f;
+            for (Int32 i = 0; i < 3; i++)
+            {
+                bw.Write(Vertices[i]);
+            }
         }
+
+        #endregion
     }
 
     public class Bone
@@ -678,23 +845,23 @@ namespace libm3
         public String Name;
         public UInt32 Flags;
         public Int16 Parent;
-        public Vector3D Position;
-        public QuaternionD Rotation;
-        public Vector3D Scale;
-
-        public AnimRef[] refs;
+        public Vector3D InitialPosition;
+        public AnimRef AnimatedPosition;
+        public QuaternionD InitialRotation;
+        public AnimRef AnimatedRotation;
+        public Vector3D InitialScale;
+        public AnimRef AnimatedScale;
 
         public static Bone ReadBone(FileStream fs, BinaryReader br, List<Tag> tags)
         {
             Bone b = new Bone();
-            b.refs = new AnimRef[3];
             Int64 lCurrentPos;
 
             // Skip first integer
             br.ReadBytes(4);
 
             // Name
-            TagRef refName = TagRef.ReadTagRef(br);
+            TagRef refName = new TagRef(br);
             lCurrentPos = fs.Position;
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
             b.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
@@ -710,29 +877,29 @@ namespace libm3
             br.ReadBytes(0x02);
 
             // Translation data
-            b.refs[0] = AnimRef.ReadAnimRef(br);
+            b.AnimatedPosition = new AnimRef(br);
 
             // Position
-            b.Position.X = br.ReadSingle();
-            b.Position.Y = br.ReadSingle();
-            b.Position.Z = br.ReadSingle();
+            b.InitialPosition.X = br.ReadSingle();
+            b.InitialPosition.Y = br.ReadSingle();
+            b.InitialPosition.Z = br.ReadSingle();
 
             // Skip data
             br.ReadBytes(0x18);
 
             // Rotation
-            b.Rotation.X = br.ReadSingle();
-            b.Rotation.Y = br.ReadSingle();
-            b.Rotation.Z = br.ReadSingle();
-            b.Rotation.W = br.ReadSingle();
+            b.InitialRotation.X = br.ReadSingle();
+            b.InitialRotation.Y = br.ReadSingle();
+            b.InitialRotation.Z = br.ReadSingle();
+            b.InitialRotation.W = br.ReadSingle();
 
             // Skip data
             br.ReadBytes(0x1C);
 
             // Scale
-            b.Scale.X = br.ReadSingle();
-            b.Scale.Y = br.ReadSingle();
-            b.Scale.Z = br.ReadSingle();
+            b.InitialScale.X = br.ReadSingle();
+            b.InitialScale.Y = br.ReadSingle();
+            b.InitialScale.Z = br.ReadSingle();
 
             // Skip data
             br.ReadBytes(0x24);
@@ -750,20 +917,21 @@ namespace libm3
         public Int32 NumTriangles;
         public Int32 MaterialGroup;
 
-        public static Geoset ReadGeoset(BinaryReader br)
+        public Geoset(BinaryReader br)
         {
-            Geoset gs = new Geoset();
-
-            gs.Type = br.ReadInt32();
-            gs.StartVertex = br.ReadUInt16();
-            gs.NumVertices = br.ReadUInt16();
-            gs.StartTriangle = br.ReadInt32()/3;
-            gs.NumTriangles = br.ReadInt32()/3;
+            Type = br.ReadInt32();
+            StartVertex = br.ReadUInt16();
+            NumVertices = br.ReadUInt16();
+            StartTriangle = br.ReadInt32() / 3;
+            NumTriangles = br.ReadInt32() / 3;
 
             // Skip a lot of data
             br.ReadBytes(0x0C);
-            
-            return gs;
+        }
+        public Geoset() { }
+        
+        public void Write(BinaryWriter bw)
+        {
         }
     }
 
@@ -780,7 +948,7 @@ namespace libm3
             List<Int64> lstPos = new List<Int64>();
 
             // Name
-            TagRef refName = TagRef.ReadTagRef(br);
+            TagRef refName = new TagRef(br);
 
             lstPos.Add(fs.Position);
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
@@ -800,7 +968,7 @@ namespace libm3
             // Layers
             for (Int32 i = 0; i < 13; i++)
             {
-                TagRef refLayer = TagRef.ReadTagRef(br);
+                TagRef refLayer = new TagRef(br);
 
                 lstPos.Add(fs.Position);
                 fs.Seek(tags[refLayer.Tag].Offset, SeekOrigin.Begin);
@@ -847,7 +1015,7 @@ namespace libm3
             br.ReadInt32();
 
             // Name
-            TagRef refName = TagRef.ReadTagRef(br);
+            TagRef refName = new TagRef(br);
             
             lstPos.Add(fs.Position);
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
@@ -863,9 +1031,5 @@ namespace libm3
 
             return l;
         }
-    }
-
-    public class Sequence
-    {
     }
 }
