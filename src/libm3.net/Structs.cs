@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -32,457 +33,15 @@ using System.Xml.Linq;
 
 namespace libm3
 {
-    public static class Extentions
-    {
-    }
-
-    public interface ISerializable
-    {
-        String TagId;
-        Int32 TagType;
-
-        void Queue(List<ISerializable> queue);
-        void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist);
-    }
-
-    public struct MD33 : ISerializable
-    {
-        /*0x00*/ public String Magic;
-        /*0x04*/ public Int32 OfsRefs;
-        /*0x08*/ public Int32 NumRefs;
-        /*0x0C*/ public TagRef Model;
-
-        public MD33(BinaryReader br)
-        {
-            Magic = Encoding.ASCII.GetString(br.ReadBytes(4));
-            OfsRefs = br.ReadInt32();
-            NumRefs = br.ReadInt32();
-            Model = new TagRef(br);
-        }
-        public MD33(Int32 ofsRefs, Int32 numRefs, TagRef model)
-        {
-            Magic = "33DM";
-            OfsRefs = ofsRefs;
-            NumRefs = numRefs;
-            Model = model;
-        }
-
-        #region ISerializable Members
-
-        public void Queue(List<ISerializable> queue)
-        {
-            queue.Add(this);
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
-        {
-            if (taglist[taglist.Count - 1].Id != "33DM")
-            {
-                taglist.Add(new Tag("33DM", (Int32)fs.Position, 1, 11));
-            }
-            else
-            {
-                Tag t = taglist[taglist.Count - 1];
-                t.NumEntries++;
-                taglist[taglist.Count - 1] = t;
-            }
-
-            bw.Write(Magic.ToCharArray(0, 4));
-            bw.Write(OfsRefs);
-            bw.Write(NumRefs);
-            bw.Write(Model.NumEntries);
-            bw.Write(Model.Tag);
-        }
-
-        #endregion
-    }
-
-    public struct AnimRef : ISerializable
-    {
-        /*0x00*/ public UInt32 Flags;
-        /*0x04*/ public UInt32 AnimId;
-
-        public AnimRef(BinaryReader br)
-        {
-            Flags = br.ReadUInt32();
-            AnimId = br.ReadUInt32();
-        }
-        public AnimRef(UInt32 animId, UInt32 flags)
-        {
-            Flags = flags;
-            AnimId = animId;
-        }
-
-        #region ISerializable Members
-
-        public void Queue(List<ISerializable> queue)
-        {
-            queue.Add(this);
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
-        {
-            bw.Write(Flags);
-            bw.Write(AnimId);
-        }
-
-        #endregion
-    }
-
-    public struct TagRef : ISerializable
-    {
-        /*0x00*/ public Int32 NumEntries;
-        /*0x04*/ public Int32 Tag;
-
-        public TagRef(BinaryReader br)
-        {
-            NumEntries = br.ReadInt32();
-            Tag = br.ReadInt32();
-        }
-        public TagRef(Int32 numEntries, Int32 tag)
-        {
-            NumEntries = numEntries;
-            Tag = tag;
-        }
-
-        #region ISerializable Members
-
-        public void Queue(List<ISerializable> queue)
-        {
-            queue.Add(this);
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
-        {
-            bw.Write(NumEntries);
-            bw.Write(Tag);
-        }
-
-        #endregion
-    }
-
-    public struct Tag : ISerializable
-    {
-        /*0x00*/ public String Id;
-        /*0x04*/ public Int32 Offset;
-        /*0x08*/ public Int32 NumEntries;
-        /*0x0C*/ public Int32 Type;
-
-        public Tag(BinaryReader br)
-        {
-            Id = Encoding.ASCII.GetString(br.ReadBytes(4));
-            Offset = br.ReadInt32();
-            NumEntries = br.ReadInt32();
-            Type = br.ReadInt32();
-        }
-        public Tag(String id, Int32 offset, Int32 numEntries, Int32 type)
-        {
-            Id = id;
-            Offset = offset;
-            NumEntries = numEntries;
-            Type = type;
-        }
-
-        #region ISerializable Members
-
-        public void Queue(List<ISerializable> queue)
-        {
-            queue.Add(this);
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
-        {
-            bw.Write(Id.ToCharArray(0, 4));
-            bw.Write(Offset);
-            bw.Write(NumEntries);
-            bw.Write(Type);
-        }
-
-        #endregion
-    }
-
-    public class Model
-    {
-        public String Name;
-        public UInt32 Version;
-        public UInt32 Flags;
-        public List<Vertex> Vertices;
-        public List<Face> Faces;
-        public List<Bone> Bones;
-        public List<UInt16> BoneList;
-        public List<Geoset> Geosets;
-        public List<Material> Materials;
-        public List<MaterialGroup> MaterialGroups;
-
-        public Vector3D[] VertexExtents;
-        public Double VertexRadius;
-
-        public static Model ReadModel(FileStream fs, BinaryReader br, Int32 type, List<Tag> tags)
-        {
-            Model m = new Model();
-            List<Int64> lstPos = new List<Int64>();
-
-            // Read name
-            TagRef refName = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
-
-            m.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            // Read version
-            m.Version = br.ReadUInt32();
-
-            // Skip a lot of data
-            br.ReadBytes(0x2C);
-
-            // Read bones
-            TagRef refBone = new TagRef(br);
-
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refBone.Tag].Offset, SeekOrigin.Begin);
-
-            m.Bones = new List<Bone>();
-
-            for (int i = 0; i < refBone.NumEntries; i++ )
-            {
-                m.Bones.Add(Bone.ReadBone(fs, br, tags));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            // Skip an integer
-            br.ReadBytes(4);
-
-            // Read flags
-            m.Flags = br.ReadUInt32();
-
-            // Read vertices
-            TagRef refVertex = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refVertex.Tag].Offset, SeekOrigin.Begin);
-
-            m.Vertices = new List<Vertex>();
-
-            while (tags[refVertex.Tag].Offset + tags[refVertex.Tag].NumEntries != fs.Position)
-            {
-                m.Vertices.Add(new Vertex(br, m.Flags));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            // Geometry
-            TagRef refDiv = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refDiv.Tag].Offset, SeekOrigin.Begin);
-
-            TagRef refFace = new TagRef(br);
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refFace.Tag].Offset, SeekOrigin.Begin);
-
-            m.Faces = new List<Face>();
-
-            for (int i = 0; i < refFace.NumEntries; i+=3)
-            {
-                m.Faces.Add(new Face(br));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            TagRef refGeoset = new TagRef(br);
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refGeoset.Tag].Offset, SeekOrigin.Begin);
-
-            m.Geosets = new List<Geoset>();
-
-            for (int i = 0; i < refGeoset.NumEntries; i++)
-            {
-                m.Geosets.Add(new Geoset(br));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            TagRef refMatBind = new TagRef(br);
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refMatBind.Tag].Offset, SeekOrigin.Begin);
-
-            for (int i = 0; i < refMatBind.NumEntries; i++)
-            {
-                // Skip 4 bytes
-                br.ReadBytes(4);
-                
-                // Read geoid
-                UInt16 geoid = br.ReadUInt16();
-
-                // Skip 4 bytes
-                br.ReadBytes(4);
-
-                // Read material id
-                UInt16 matid = br.ReadUInt16();
-
-                // Skip 2 bytes
-                br.ReadBytes(2);
-
-                m.Geosets[geoid].MaterialGroup = matid;
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            // Unknown 16-bit integers
-            br.ReadBytes(0x08);
-
-            // Read vertex extents
-            m.VertexExtents = new Vector3D[2];
-            for (Int32 i = 0; i < 2; i++)
-            {
-                m.VertexExtents[i].X = br.ReadSingle();
-                m.VertexExtents[i].Y = br.ReadSingle();
-                m.VertexExtents[i].Z = br.ReadSingle();
-            }
-            m.VertexRadius = br.ReadSingle();
-
-            // Skip a lot of data
-            br.ReadBytes(0x5C);
-
-            if (type == 23)
-                br.ReadBytes(0x08);
-
-            // Materials
-            TagRef refMatGroups = new TagRef(br);
-
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refMatGroups.Tag].Offset, SeekOrigin.Begin);
-
-            m.MaterialGroups = new List<MaterialGroup>();
-
-            for (Int32 i = 0; i < refMatGroups.NumEntries; i++)
-            {
-                m.MaterialGroups.Add(MaterialGroup.ReadMaterialGroup(br));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            TagRef refMats = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refMats.Tag].Offset, SeekOrigin.Begin);
-
-            m.Materials = new List<Material>();
-
-            for (Int32 i = 0; i < refMats.NumEntries; i++)
-            {
-                m.Materials.Add(Material.ReadMaterial(fs, br, tags));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            return m;
-        }
-
-        public void ToXML()
-        {
-            XmlDocument doc = new XmlDocument();
-            XmlNode node;
-
-            // XML declaration
-            node = doc.CreateNode(XmlNodeType.XmlDeclaration, "", "");
-            doc.AppendChild(node);
-
-            // Root node
-            XmlElement root = doc.CreateElement("COLLADA");
-            doc.AppendChild(root);
-
-            // Model
-            XML.Build(doc, this);
-
-            // Set the namespace and version
-            root.SetAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema");
-            root.SetAttribute("version", "1.4.0");
-
-            try
-            {
-                doc.Save("C:\\Release\\test.xml");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
-        }
-        public void ToM3()
-        {
-            FileStream fs = new FileStream("C:\\Release\\test.m3", FileMode.Create);
-            BinaryWriter bw = new BinaryWriter(fs);
-            List<Tag> taglist = new List<Tag>();
-            List< List<ISerializable> > objects = new List< List<ISerializable> >();
-            
-            Tag tag;
-            TagRef tagref;
-
-            foreach (ISerializable obj in Vertices)
-            {
-            }
-
-            foreach (ISerializable obj in objects)
-            {
-                obj.Write(fs, bw, taglist);
-
-                if (fs.Position % 0x10 != 0)
-                {
-                    Int32 numBytes = 0x10 - (Int32)(fs.Position % 0x10);
-                    for (Int32 i = 0; i < numBytes; i++)
-                    {
-                        bw.Write((Byte)0xAA);
-                    }
-                }
-            }
-
-            foreach (ISerializable obj in objects)
-            {
-                if (taglist.Count == 0 || taglist[taglist.Count - 1].Id != "__8U")
-                {
-                    taglist.Add(new Tag("__8U", (Int32)fs.Position, 1, 0));
-                }
-                else
-                {
-                    Tag t = taglist[taglist.Count - 1];
-                    t.NumEntries++;
-                    taglist[taglist.Count - 1] = t;
-                }
-
-                obj.Write(fs, bw, taglist);
-            }
-            
-            foreach (Tag t in taglist)
-            {
-                t.Write(fs, bw, taglist);
-            }
-        }
-    }
-
+    // Serialization
     public static class XML
     {
-        // Build XML
         public static void Build(XmlDocument doc, Model model)
         {
             // Set locale for correct group separator
             String originalCulture = CultureInfo.CurrentCulture.ToString();
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
-            
+
             // Do the XML
             XmlElement el;
             XmlNode root = doc.SelectSingleNode("/COLLADA");
@@ -519,7 +78,7 @@ namespace libm3
                         XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
                         source.SetAttribute("id", "geoset" + count + "_position");
                         XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
-                        array.SetAttribute("id","geoset" + count + "_position-array");
+                        array.SetAttribute("id", "geoset" + count + "_position-array");
                         array.SetAttribute("count", Convert.ToString(set.NumVertices * 3));
                         XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
                         for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
@@ -651,20 +210,20 @@ namespace libm3
                     XmlText p = (XmlText)triangles.AppendChild(doc.CreateElement("p")).AppendChild(doc.CreateTextNode("\r\n"));
                     for (Int32 i = set.StartTriangle; i < set.StartTriangle + set.NumTriangles; i++)
                     {
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
 
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
 
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i].Vertices[2] - set.StartVertex) + "\r\n");
+                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + " ");
+                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + "\r\n");
                     }
                 }
                 XmlElement node = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene").AppendChild(doc.CreateElement("node"));
@@ -682,7 +241,665 @@ namespace libm3
         }
     }
 
-    public class Vertex : ISerializable
+    public static class Serializer
+    {
+        public static List<SC2List<object>> lists = new List<SC2List<object>>();
+
+        public static String GetId(Type t)
+        {
+            Dictionary<Type, String> types = new Dictionary<Type, String>();
+
+            types.Add(typeof(MD33), "33DM");
+            types.Add(typeof(Model), "LDOM");
+            types.Add(typeof(Vertex), "__8U");
+            types.Add(typeof(Face), "_61U");
+            types.Add(typeof(Bone), "ENOB");
+            types.Add(typeof(Geoset), "NGER");
+            types.Add(typeof(Material), "_TAM");
+            types.Add(typeof(MaterialGroup), "MTAM");
+            types.Add(typeof(Geometry), "_VID");
+
+            types.Add(typeof(UInt16), "_61U");
+            types.Add(typeof(UInt32), "_23U");
+            types.Add(typeof(Int16), "_61I");
+            types.Add(typeof(Int32), "_23I");
+            types.Add(typeof(Byte), "__8U");
+            types.Add(typeof(Char), "RAHC");
+
+            return types[t];
+        }
+        public static void Write(FileStream fs, BinaryWriter bw)
+        {
+            List<Tag> tags = new List<Tag>();
+            
+            // Write each list
+            foreach (SC2List<object> list in lists)
+            {
+                if (list.Count == 0)
+                    continue;
+
+                // Make the tag
+                Tag t = new Tag(list[0].GetType(), (Int32)fs.Position, list.Count, 0);
+
+                // Write lists
+                foreach (object el in list)
+                {
+                    if (el as ISerializable != null)
+                    {
+                        (el as ISerializable).Write(fs, bw);
+                    }
+                    else
+                    {
+                        if (el.GetType() == typeof(UInt16))
+                        {
+                            bw.Write((UInt16)el);
+                        }
+                        if (el.GetType() == typeof(UInt32))
+                        {
+                            bw.Write((UInt32)el);
+                        }
+                        if (el.GetType() == typeof(Int16))
+                        {
+                            bw.Write((Int16)el);
+                        }
+                        if (el.GetType() == typeof(Int32))
+                        {
+                            bw.Write((Int32)el);
+                        }
+                        if (el.GetType() == typeof(Single))
+                        {
+                            bw.Write((Single)el);
+                        }
+                        if (el.GetType() == typeof(Byte))
+                        {
+                            bw.Write((Byte)el);
+                        }
+                        if (el.GetType() == typeof(Char))
+                        {
+                            bw.Write((Char)el);
+                        }
+                    }
+                }
+
+                // Add the tag
+                tags.Add(t);
+
+                // Add padding at end of chunk
+                if (fs.Position % 0x10 != 0)
+                {
+                    Int32 numBytes = 0x10 - (Int32)(fs.Position % 0x10);
+                    for (Int32 i = 0; i < numBytes; i++)
+                    {
+                        bw.Write((Byte)0xAA);
+                    }
+                }
+            }
+
+            // Write tags
+            foreach (Tag t in tags)
+            {
+                t.Write(fs, bw);
+            }
+        }
+        public static void RecursiveParse(ISerializable obj)
+        {
+            PropertyInfo[] props = obj.GetType().GetProperties();
+            foreach (PropertyInfo p in props)
+            {
+                if (p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(SC2List<>))
+                {
+                    object o = p.GetValue(obj, null);
+                    SC2List<object> list = (o as ISerializableList).GetSerializable();
+
+                    lists.Add(list);
+
+                    foreach (object el in list)
+                    {
+                        if(el as ISerializable != null)
+                            RecursiveParse(el as ISerializable);
+                    }
+                }
+                if (p.PropertyType == typeof(String))
+                {
+                    object o = p.GetValue(obj, null);
+                    SC2List<object> list = new SC2List<object>();
+
+                    foreach (Char el in o as String)
+                    {
+                        list.Add(el);
+                    }
+
+                    list.Add('\0');
+
+                    lists.Add(list);
+                }
+            }
+        }
+    }
+
+    // Base objects and interfaces
+    public interface ISerializable
+    {
+        void Write(FileStream fs, BinaryWriter bw);
+    }
+
+    public abstract class SC2Object : ISerializable
+    {
+        public SC2Object() { }
+
+        #region ISerializable Members
+
+        public abstract void Write(FileStream fs, BinaryWriter bw);
+
+        #endregion
+    }
+
+    public interface ISerializableList
+    {
+        SC2List<object> GetSerializable();
+    }
+
+    public class SC2List<T> : List<T>, ISerializableList
+    {
+        public SC2List() { }
+
+        #region ISerializableList Members
+
+        public SC2List<object> GetSerializable()
+        {
+            SC2List<object> list = new SC2List<object>();
+            
+            foreach (object obj in this)
+            {
+                list.Add(obj);
+            }
+
+            return list;
+        }
+
+        #endregion
+    }
+
+    // Main file
+    public class M3 : SC2Object
+    {
+        public SC2List<MD33> Header { get; set; }
+        public SC2List<Model> Model { get; set; }
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // Chunks
+    public class MD33 : SC2Object
+    {
+        private Char[] _magic = "33DM".ToCharArray();
+        public Char[] Magic
+        {
+            get
+            {
+                return _magic;
+            }
+        }
+        private Int32 _ofsrefs = 0;
+        public Int32 OfsRefs
+        {
+            get
+            {
+                return _ofsrefs;
+            }
+            set
+            {
+                _ofsrefs = value;
+            }
+        }
+        private Int32 _numrefs = 0;
+        public Int32 NumRefs
+        {
+            get
+            {
+                return _numrefs;
+            }
+            set
+            {
+                _numrefs = value;
+            }
+        }
+        private TagRef _model = new TagRef(1, 1);
+        public TagRef Model
+        {
+            get
+            {
+                return _model;
+            }
+            set
+            {
+                _model = value;
+            }
+        }
+
+        public MD33(BinaryReader br)
+        {
+            if (Encoding.ASCII.GetString(br.ReadBytes(4)) != new String(Magic))
+                throw new System.Exception("Incorrect file header.");
+            OfsRefs = br.ReadInt32();
+            NumRefs = br.ReadInt32();
+            Model = new TagRef(br);
+        }
+        public MD33(Int32 ofsRefs, Int32 numRefs, TagRef model)
+        {
+            OfsRefs = ofsRefs;
+            NumRefs = numRefs;
+            Model = model;
+        }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Magic);
+            bw.Write(OfsRefs);
+            bw.Write(NumRefs);
+            bw.Write(Model.NumEntries);
+            bw.Write(Model.Tag);
+        }
+
+        #endregion
+    }
+
+    public class Model : SC2Object
+    {
+        private String _name = "";
+        public String Name
+        {
+            get
+            {
+                return _name;
+            }
+            set
+            {
+                _name = value;
+            }
+        }
+        private UInt32 _version = 3411;
+        public UInt32 Version
+        {
+            get
+            {
+                return _version;
+            }
+            set
+            {
+                _version = value;
+            }
+        }
+        private UInt32 _flags = 0;
+        public UInt32 Flags
+        {
+            get
+            {
+                return _flags;
+            }
+            set
+            {
+                _flags = value;
+            }
+        }
+        private SC2List<Vertex> _vertices = new SC2List<Vertex>();
+        public SC2List<Vertex> Vertices
+        {
+            get
+            {
+                return _vertices;
+            }
+            private set
+            {
+                _vertices = value;
+            }
+        }
+        private SC2List<Face> _faces = new SC2List<Face>();
+        public SC2List<Face> Faces
+        {
+            get
+            {
+                return _faces;
+            }
+            private set
+            {
+                _faces = value;
+            }
+        }
+        private SC2List<Bone> _bones = new SC2List<Bone>();
+        public SC2List<Bone> Bones
+        {
+            get
+            {
+                return _bones;
+            }
+            private set
+            {
+                _bones = value;
+            }
+        }
+        private SC2List<UInt16> _boneList = new SC2List<UInt16>();
+        public SC2List<UInt16> BoneList
+        {
+            get
+            {
+                return _boneList;
+            }
+            private set
+            {
+                _boneList = value;
+            }
+        }
+        private SC2List<Geometry> _geometry = new SC2List<Geometry>();
+        public SC2List<Geometry> Geometry
+        {
+            get
+            {
+                return _geometry;
+            }
+            private set
+            {
+                _geometry = value;
+            }
+        }
+        private SC2List<Geoset> _geosets = new SC2List<Geoset>();
+        public SC2List<Geoset> Geosets
+        {
+            get
+            {
+                return _geosets;
+            }
+            private set
+            {
+                _geosets = value;
+            }
+        }
+        private SC2List<Material> _materials = new SC2List<Material>();
+        public SC2List<Material> Materials
+        {
+            get
+            {
+                return _materials;
+            }
+            private set
+            {
+                _materials = value;
+            }
+        }
+        private SC2List<MaterialGroup> _materialGroups = new SC2List<MaterialGroup>();
+        public SC2List<MaterialGroup> MaterialGroups
+        {
+            get
+            {
+                return _materialGroups;
+            }
+            private set
+            {
+                _materialGroups = value;
+            }
+        }
+        private Vector3F[] _extents = new Vector3F[2];
+        public Vector3F[] Extents
+        {
+            get
+            {
+                return _extents;
+            }
+            private set
+            {
+                _extents = value;
+            }
+        }
+        private Double _radius = 0.0;
+        public Double Radius
+        {
+            get
+            {
+                return _radius;
+            }
+            set
+            {
+                _radius = value;
+            }
+        }
+
+        public Model(FileStream fs, BinaryReader br, UInt32 type, List<Tag> tags)
+        {
+            List<Int64> lstPos = new List<Int64>();
+
+            // Read name
+            TagRef refName = new TagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+
+            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Read version
+            Version = br.ReadUInt32();
+
+            // Skip a lot of data
+            br.ReadBytes(0x2C);
+
+            // Read bones
+            TagRef refBone = new TagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refBone.Tag].Offset, SeekOrigin.Begin);
+
+            for (int i = 0; i < refBone.NumEntries; i++ )
+            {
+                Bones.Add(new Bone(fs, br, tags));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Skip an integer
+            br.ReadBytes(4);
+
+            // Read flags
+            Flags = br.ReadUInt32();
+
+            // Read vertices
+            TagRef refVertex = new TagRef(br);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refVertex.Tag].Offset, SeekOrigin.Begin);
+
+            while (tags[refVertex.Tag].Offset + tags[refVertex.Tag].NumEntries != fs.Position)
+            {
+                Vertices.Add(new Vertex(br, Flags));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Geometry
+            TagRef refDiv = new TagRef(br);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refDiv.Tag].Offset, SeekOrigin.Begin);
+
+            TagRef refFace = new TagRef(br);
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refFace.Tag].Offset, SeekOrigin.Begin);
+
+            for (int i = 0; i < refFace.NumEntries; i+=3)
+            {
+                Faces.Add(new Face(br));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            TagRef refGeoset = new TagRef(br);
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refGeoset.Tag].Offset, SeekOrigin.Begin);
+
+            for (int i = 0; i < refGeoset.NumEntries; i++)
+            {
+                Geosets.Add(new Geoset(br));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            TagRef refMatBind = new TagRef(br);
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refMatBind.Tag].Offset, SeekOrigin.Begin);
+
+            for (int i = 0; i < refMatBind.NumEntries; i++)
+            {
+                // Skip 4 bytes
+                br.ReadBytes(4);
+                
+                // Read geoid
+                UInt16 geoid = br.ReadUInt16();
+
+                // Skip 4 bytes
+                br.ReadBytes(4);
+
+                // Read material id
+                UInt16 matid = br.ReadUInt16();
+
+                // Skip 2 bytes
+                br.ReadBytes(2);
+
+                Geosets[geoid].MaterialGroup = matid;
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Bone lookup
+            TagRef refBoneLookup = new TagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refBoneLookup.Tag].Offset, SeekOrigin.Begin);
+
+            for (int i = 0; i < refBoneLookup.NumEntries; i++)
+            {
+                UInt16 bone = br.ReadUInt16();
+                BoneList.Add(bone);
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            // Read vertex extents
+            for (Int32 i = 0; i < 2; i++)
+            {
+                Extents[i].X = br.ReadSingle();
+                Extents[i].Y = br.ReadSingle();
+                Extents[i].Z = br.ReadSingle();
+            }
+            Radius = br.ReadSingle();
+
+            // Skip a lot of data
+            br.ReadBytes(0x5C);
+
+            if (type == 23)
+                br.ReadBytes(0x08);
+
+            // Materials
+            TagRef refMatGroups = new TagRef(br);
+
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refMatGroups.Tag].Offset, SeekOrigin.Begin);
+
+            for (Int32 i = 0; i < refMatGroups.NumEntries; i++)
+            {
+                MaterialGroups.Add(new MaterialGroup(fs, br));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+
+            TagRef refMats = new TagRef(br);
+            
+            lstPos.Add(fs.Position);
+            fs.Seek(tags[refMats.Tag].Offset, SeekOrigin.Begin);
+
+            for (Int32 i = 0; i < refMats.NumEntries; i++)
+            {
+                Materials.Add(new Material(fs, br, tags));
+            }
+
+            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
+            lstPos.RemoveAt(lstPos.Count - 1);
+        }
+
+        public void ToXML()
+        {
+            XmlDocument doc = new XmlDocument();
+            XmlNode node;
+
+            // XML declaration
+            node = doc.CreateNode(XmlNodeType.XmlDeclaration, "", "");
+            doc.AppendChild(node);
+
+            // Root node
+            XmlElement root = doc.CreateElement("COLLADA");
+            doc.AppendChild(root);
+
+            // Model
+            XML.Build(doc, this);
+
+            // Set the namespace and version
+            root.SetAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema");
+            root.SetAttribute("version", "1.4.0");
+
+            try
+            {
+                doc.Save("C:\\Release\\test.xml");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+        }
+        public void ToM3()
+        {
+            FileStream fs = new FileStream("D:\\test.m3", FileMode.Create);
+            BinaryWriter bw = new BinaryWriter(fs);
+            
+            Tag tag;
+            TagRef tagref;
+
+            M3 m = new M3();
+
+            m.Header = new SC2List<MD33>();
+            m.Header.Add(new MD33(0x20, 1, new TagRef(0, 0)));
+            m.Model = new SC2List<Model>();
+            m.Model.Add(this);
+
+            Serializer.RecursiveParse(m);
+            Serializer.Write(fs, bw);
+        }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+
+        }
+
+        #endregion
+    }
+
+    public class Vertex : SC2Object
     {
         public UInt32 Flags;
         public Vector3F Position;
@@ -733,27 +950,11 @@ namespace libm3
             Tangent.Z = 2 * br.ReadByte() / 255.0f - 1;
             Tangent.W = br.ReadByte() / 255.0f;
         }
-        public Vertex() { }
 
         #region ISerializable Members
 
-        public void Queue(List<ISerializable> queue)
+        public override void Write(FileStream fs, BinaryWriter bw)
         {
-            queue.Add(this);
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
-        {
-            if (taglist.Count == 0 || taglist[taglist.Count - 1].Id != "__8U")
-            {
-                taglist.Add(new Tag("__8U", (Int32)fs.Position, 1, 0));
-            }
-            else
-            {
-                Tag t = taglist[taglist.Count - 1];
-                t.NumEntries++;
-                taglist[taglist.Count - 1] = t;
-            }
 
             // Position vector
             bw.Write(Position.X);
@@ -796,51 +997,45 @@ namespace libm3
         #endregion
     }
 
-    public class Face : ISerializable
+    public class Face : SC2Object
     {
-        public Int16[] Vertices;
+        private Int16[] _vertices = new Int16[3];
+        public Int16 this[int index]
+        {
+            get
+            {
+                return _vertices[index];
+            }
+
+            set
+            {
+                _vertices[index] = value;
+            }
+        }
 
         public Face(BinaryReader br)
         {
-            Vertices = new Int16[3];
-
             for (Int16 i = 0; i < 3; i++)
             {
-                Vertices[i] = br.ReadInt16();
+                _vertices[i] = br.ReadInt16();
             }
         }
         public Face() { }
 
         #region ISerializable Members
 
-        public void Queue(List<ISerializable> queue)
+        public override void Write(FileStream fs, BinaryWriter bw)
         {
-            queue.Add(this);
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw, List<Tag> taglist)
-        {
-            if (taglist[taglist.Count - 1].Id != "_61U")
-            {
-                taglist.Add(new Tag("_61U", (Int32)fs.Position, 3, 0));
-            }
-            else
-            {
-                Tag t = taglist[taglist.Count - 1];
-                t.NumEntries+=3;
-                taglist[taglist.Count - 1] = t;
-            }
-
             for (Int32 i = 0; i < 3; i++)
             {
-                bw.Write(Vertices[i]);
+                bw.Write(_vertices[i]);
             }
         }
 
         #endregion
     }
 
-    public class Bone
+    public class Bone : SC2Object
     {
         public String Name;
         public UInt32 Flags;
@@ -852,9 +1047,8 @@ namespace libm3
         public Vector3D InitialScale;
         public AnimRef AnimatedScale;
 
-        public static Bone ReadBone(FileStream fs, BinaryReader br, List<Tag> tags)
+        public Bone(FileStream fs, BinaryReader br, List<Tag> tags)
         {
-            Bone b = new Bone();
             Int64 lCurrentPos;
 
             // Skip first integer
@@ -864,51 +1058,76 @@ namespace libm3
             TagRef refName = new TagRef(br);
             lCurrentPos = fs.Position;
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
-            b.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
             fs.Seek(lCurrentPos, SeekOrigin.Begin);
 
             // Flags
-            b.Flags = br.ReadUInt32();
+            Flags = br.ReadUInt32();
 
             // Parent
-            b.Parent = br.ReadInt16();
+            Parent = br.ReadInt16();
 
             // Skip data
             br.ReadBytes(0x02);
 
             // Translation data
-            b.AnimatedPosition = new AnimRef(br);
+            AnimatedPosition = new AnimRef(br);
 
             // Position
-            b.InitialPosition.X = br.ReadSingle();
-            b.InitialPosition.Y = br.ReadSingle();
-            b.InitialPosition.Z = br.ReadSingle();
+            InitialPosition.X = br.ReadSingle();
+            InitialPosition.Y = br.ReadSingle();
+            InitialPosition.Z = br.ReadSingle();
 
             // Skip data
             br.ReadBytes(0x18);
 
             // Rotation
-            b.InitialRotation.X = br.ReadSingle();
-            b.InitialRotation.Y = br.ReadSingle();
-            b.InitialRotation.Z = br.ReadSingle();
-            b.InitialRotation.W = br.ReadSingle();
+            InitialRotation.X = br.ReadSingle();
+            InitialRotation.Y = br.ReadSingle();
+            InitialRotation.Z = br.ReadSingle();
+            InitialRotation.W = br.ReadSingle();
 
             // Skip data
             br.ReadBytes(0x1C);
 
             // Scale
-            b.InitialScale.X = br.ReadSingle();
-            b.InitialScale.Y = br.ReadSingle();
-            b.InitialScale.Z = br.ReadSingle();
+            InitialScale.X = br.ReadSingle();
+            InitialScale.Y = br.ReadSingle();
+            InitialScale.Z = br.ReadSingle();
 
             // Skip data
             br.ReadBytes(0x24);
-
-            return b;
         }
+        public Bone() { }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+        }
+
+        #endregion
     }
 
-    public class Geoset
+    public class Geometry : SC2Object
+    {
+        public List<Geoset> Geosets;
+
+        public Geometry()
+        {
+            Geosets = new List<Geoset>();
+        }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+        }
+
+        #endregion
+    }
+
+    public class Geoset : SC2Object
     {
         public Int32 Type;
         public Int32 StartVertex;
@@ -933,18 +1152,25 @@ namespace libm3
         public void Write(BinaryWriter bw)
         {
         }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+        }
+
+        #endregion
     }
 
-    public class Material
+    public class Material : SC2Object
     {
         public String Name;
         public List<Layer> Layers;
         public Vector2D Coords;
 
-        public static Material ReadMaterial(FileStream fs, BinaryReader br, List<Tag> tags)
+        public Material(FileStream fs, BinaryReader br, List<Tag> tags)
         {
-            Material m = new Material();
-            m.Layers = new List<Layer>();
+            Layers = new List<Layer>();
             List<Int64> lstPos = new List<Int64>();
 
             // Name
@@ -953,7 +1179,7 @@ namespace libm3
             lstPos.Add(fs.Position);
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
 
-            m.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
@@ -962,8 +1188,8 @@ namespace libm3
             br.ReadBytes(0x20);
 
             // Coords?
-            m.Coords.X = br.ReadSingle();
-            m.Coords.Y = br.ReadSingle();
+            Coords.X = br.ReadSingle();
+            Coords.Y = br.ReadSingle();
 
             // Layers
             for (Int32 i = 0; i < 13; i++)
@@ -973,7 +1199,7 @@ namespace libm3
                 lstPos.Add(fs.Position);
                 fs.Seek(tags[refLayer.Tag].Offset, SeekOrigin.Begin);
 
-                m.Layers.Add(Layer.ReadLayer(fs, br, tags));
+                Layers.Add(new Layer(fs, br, tags));
 
                 fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
                 lstPos.RemoveAt(lstPos.Count - 1);
@@ -981,34 +1207,45 @@ namespace libm3
 
             // Skip a lot of data
             br.ReadBytes(0x3C);
-
-            return m;
         }
+        public Material() { Layers = new List<Layer>(); }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+        }
+
+        #endregion
     }
 
-    public class MaterialGroup
+    public class MaterialGroup : SC2Object
     {
         public UInt32 Index;
         public UInt32 Num;
 
-        public static MaterialGroup ReadMaterialGroup(BinaryReader br)
+        public MaterialGroup(FileStream fs, BinaryReader br)
         {
-            MaterialGroup matGroup = new MaterialGroup();
-
-            matGroup.Num = br.ReadUInt32();
-            matGroup.Index = br.ReadUInt32();
-
-            return matGroup;
+            Num = br.ReadUInt32();
+            Index = br.ReadUInt32();
         }
+        public MaterialGroup() { }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+        }
+
+        #endregion
     }
 
-    public class Layer
+    public class Layer : SC2Object
     {
         public String Name;
 
-        public static Layer ReadLayer(FileStream fs, BinaryReader br, List<Tag> tags)
+        public Layer(FileStream fs, BinaryReader br, List<Tag> tags)
         {
-            Layer l = new Layer();
             List<Int64> lstPos = new List<Int64>();
 
             // Skip unknown value
@@ -1021,15 +1258,156 @@ namespace libm3
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
 
             if(tags[refName.Tag].Id == "RAHC")
-                l.Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+                Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
 
             // Skip a lot of data
             br.ReadBytes(0x154);
+        }
+        public Layer() { }
 
-            return l;
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+        }
+
+        #endregion
+    }
+
+
+    // References
+    public struct AnimRef
+    {
+        public UInt32 Flags;
+        public UInt32 AnimId;
+
+        public AnimRef(BinaryReader br)
+        {
+            Flags = br.ReadUInt32();
+            AnimId = br.ReadUInt32();
+        }
+        public AnimRef(UInt32 animId, UInt32 flags)
+        {
+            Flags = flags;
+            AnimId = animId;
+        }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Flags);
+            bw.Write(AnimId);
+        }
+
+        #endregion
+    }
+
+    public struct TagRef
+    {
+        public Int32 NumEntries;
+        public Int32 Tag;
+
+        public TagRef(BinaryReader br)
+        {
+            NumEntries = br.ReadInt32();
+            Tag = br.ReadInt32();
+        }
+        public TagRef(Int32 numEntries, Int32 tag)
+        {
+            NumEntries = numEntries;
+            Tag = tag;
+        }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(NumEntries);
+            bw.Write(Tag);
+        }
+
+        #endregion
+    }
+
+    public struct Tag
+    {
+        public String Id;
+        public Int32 Offset;
+        public Int32 NumEntries;
+        public UInt32 Type;
+
+        public static String GetId(Type t)
+        {
+            Dictionary<Type, String> types = new Dictionary<Type, String>();
+
+            types.Add(typeof(MD33), "33DM");
+            types.Add(typeof(Model), "LDOM");
+            types.Add(typeof(Vertex), "__8U");
+            types.Add(typeof(Face), "_61U");
+            types.Add(typeof(Bone), "ENOB");
+            types.Add(typeof(Geoset), "NGER");
+            types.Add(typeof(Material), "_TAM");
+            types.Add(typeof(MaterialGroup), "MTAM");
+            types.Add(typeof(Geometry), "_VID");
+
+            types.Add(typeof(UInt16), "_61U");
+            types.Add(typeof(UInt32), "_23U");
+            types.Add(typeof(Int16), "_61I");
+            types.Add(typeof(Int32), "_23I");
+            types.Add(typeof(Byte), "__8U");
+            types.Add(typeof(Char), "RAHC");
+
+            return types[t];
+        }
+        public static Int32 GetSize(Type t)
+        {
+            Dictionary<Type, Int32> types = new Dictionary<Type, Int32>();
+
+            types.Add(typeof(MD33), 20);
+            types.Add(typeof(Model), 0);
+            types.Add(typeof(Vertex), 1);
+            types.Add(typeof(Face), 2);
+            types.Add(typeof(Bone), 156);
+            types.Add(typeof(Geoset), 28);
+            types.Add(typeof(Material), 212);
+            types.Add(typeof(MaterialGroup), 8);
+            types.Add(typeof(Geometry), 32);
+
+            types.Add(typeof(UInt16), 2);
+            types.Add(typeof(UInt32), 4);
+            types.Add(typeof(Int16), 2);
+            types.Add(typeof(Int32), 4);
+            types.Add(typeof(Byte), 1);
+            types.Add(typeof(Char), 1);
+
+            return types[t];
+        }
+
+        public Tag(BinaryReader br)
+        {
+            Id = Encoding.ASCII.GetString(br.ReadBytes(4));
+            Offset = br.ReadInt32();
+            NumEntries = br.ReadInt32();
+            Type = br.ReadUInt32();
+        }
+        public Tag(Type t, Int32 offset, Int32 numEntries, UInt32 type)
+        {
+            Id = GetId(t);
+            Offset = offset;
+            NumEntries = numEntries;
+            Type = type;
+        }
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Id.ToCharArray(0, 4));
+            bw.Write(Offset);
+            bw.Write(NumEntries);
+            bw.Write(Type);
         }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace ModelLoader
@@ -29,9 +30,12 @@ namespace ModelLoader
             // Read the model
             fs.Seek(lstTag[head.Model.Tag].Offset, SeekOrigin.Begin);
 
-            Model m = Model.ReadModel(fs, br, lstTag[head.Model.Tag].Type, lstTag);
+            Model m = new Model(fs, br, lstTag[head.Model.Tag].Type, lstTag);
+
+            
 
             m.ToM3();
+            bool isEqual = (Serializer.lists[1][0] as Model).Faces[0] == (Serializer.lists[4][0]);
         }
     }
 }
