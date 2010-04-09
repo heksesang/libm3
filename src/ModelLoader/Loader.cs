@@ -35,7 +35,6 @@ namespace ModelLoader
             
 
             m.ToM3();
-            bool isEqual = (Serializer.lists[1][0] as Model).Faces[0] == (Serializer.lists[4][0]);
         }
     }
 }

@@ -243,37 +243,25 @@ namespace libm3
 
     public static class Serializer
     {
-        public static List<SC2List<object>> lists = new List<SC2List<object>>();
-
-        public static String GetId(Type t)
+        private static List<SC2List<object>> _lists = new List<SC2List<object>>();
+        public static List<SC2List<object>> Lists
         {
-            Dictionary<Type, String> types = new Dictionary<Type, String>();
-
-            types.Add(typeof(MD33), "33DM");
-            types.Add(typeof(Model), "LDOM");
-            types.Add(typeof(Vertex), "__8U");
-            types.Add(typeof(Face), "_61U");
-            types.Add(typeof(Bone), "ENOB");
-            types.Add(typeof(Geoset), "NGER");
-            types.Add(typeof(Material), "_TAM");
-            types.Add(typeof(MaterialGroup), "MTAM");
-            types.Add(typeof(Geometry), "_VID");
-
-            types.Add(typeof(UInt16), "_61U");
-            types.Add(typeof(UInt32), "_23U");
-            types.Add(typeof(Int16), "_61I");
-            types.Add(typeof(Int32), "_23I");
-            types.Add(typeof(Byte), "__8U");
-            types.Add(typeof(Char), "RAHC");
-
-            return types[t];
+            get
+            {
+                return _lists;
+            }
+            private set
+            {
+                _lists = value;
+            }
         }
+
         public static void Write(FileStream fs, BinaryWriter bw)
         {
             List<Tag> tags = new List<Tag>();
             
             // Write each list
-            foreach (SC2List<object> list in lists)
+            foreach (SC2List<object> list in Lists)
             {
                 if (list.Count == 0)
                     continue;
@@ -287,37 +275,6 @@ namespace libm3
                     if (el as ISerializable != null)
                     {
                         (el as ISerializable).Write(fs, bw);
-                    }
-                    else
-                    {
-                        if (el.GetType() == typeof(UInt16))
-                        {
-                            bw.Write((UInt16)el);
-                        }
-                        if (el.GetType() == typeof(UInt32))
-                        {
-                            bw.Write((UInt32)el);
-                        }
-                        if (el.GetType() == typeof(Int16))
-                        {
-                            bw.Write((Int16)el);
-                        }
-                        if (el.GetType() == typeof(Int32))
-                        {
-                            bw.Write((Int32)el);
-                        }
-                        if (el.GetType() == typeof(Single))
-                        {
-                            bw.Write((Single)el);
-                        }
-                        if (el.GetType() == typeof(Byte))
-                        {
-                            bw.Write((Byte)el);
-                        }
-                        if (el.GetType() == typeof(Char))
-                        {
-                            bw.Write((Char)el);
-                        }
                     }
                 }
 
@@ -349,9 +306,9 @@ namespace libm3
                 if (p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(SC2List<>))
                 {
                     object o = p.GetValue(obj, null);
-                    SC2List<object> list = (o as ISerializableList).GetSerializable();
+                    SC2List<object> list = (o as ISerializableList).GetList();
 
-                    lists.Add(list);
+                    Lists.Add(list);
 
                     foreach (object el in list)
                     {
@@ -359,25 +316,115 @@ namespace libm3
                             RecursiveParse(el as ISerializable);
                     }
                 }
-                if (p.PropertyType == typeof(String))
+                if (p.PropertyType == typeof(SC2String))
                 {
                     object o = p.GetValue(obj, null);
                     SC2List<object> list = new SC2List<object>();
 
-                    foreach (Char el in o as String)
+                    foreach (SC2Char el in o as SC2String)
                     {
                         list.Add(el);
                     }
 
-                    list.Add('\0');
-
-                    lists.Add(list);
+                    Lists.Add(list);
                 }
             }
         }
     }
 
     // Base objects and interfaces
+    public class SC2UInt16 : ISerializable
+    {
+        public UInt16 Value { get; set; }
+
+        public SC2UInt16(UInt16 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+
+    public class SC2UInt32 : ISerializable
+    {
+        public UInt32 Value { get; set; }
+
+        public SC2UInt32(UInt32 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Int16 : ISerializable
+    {
+        public Int16 Value { get; set; }
+
+        public SC2Int16(Int16 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Int32 : ISerializable
+    {
+        public Int32 Value { get; set; }
+
+        public SC2Int32(Int32 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Byte : ISerializable
+    {
+        public Byte Value { get; set; }
+
+        public SC2Byte(Byte value) { Value = value; }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Char : ISerializable
+    {
+        public Char Value { get; set; }
+
+        public SC2Char(Char value) { Value = value; }
+
+        #region ISerializable Members
+
+        public void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+
     public interface ISerializable
     {
         void Write(FileStream fs, BinaryWriter bw);
@@ -396,7 +443,8 @@ namespace libm3
 
     public interface ISerializableList
     {
-        SC2List<object> GetSerializable();
+        SC2List<object> GetList();
+        TagRef GetRef();
     }
 
     public class SC2List<T> : List<T>, ISerializableList
@@ -405,19 +453,93 @@ namespace libm3
 
         #region ISerializableList Members
 
-        public SC2List<object> GetSerializable()
+        virtual public SC2List<object> GetList()
         {
             SC2List<object> list = new SC2List<object>();
             
             foreach (object obj in this)
             {
                 list.Add(obj);
-            }
+            }            
 
             return list;
         }
 
+        virtual public TagRef GetRef()
+        {
+            Int32 count = 0;
+            foreach (SC2List<object> obj in Serializer.Lists)
+            {
+                if (Count != 0)
+                {
+                    TagRef t = new TagRef();
+
+                    t.NumEntries = obj.Count;
+                    t.Tag = count;
+
+                    return t;
+                }
+                count++;
+            }
+
+            return new TagRef(0, 0);
+        }
+
         #endregion
+    }
+
+    public class SC2String : SC2List<SC2Char>
+    {
+        public SC2Char[] Array
+        {
+            get
+            {
+                return ToArray();
+            }
+        }
+        public Char[] CharArray
+        {
+            get
+            {
+                Char[] arr = new Char[Count];
+
+                Int32 count = 0;
+                foreach (SC2Char ch in this)
+                {
+                    arr[count] = ch.Value;
+                    count++;
+                }
+
+                return arr;
+            }
+        }
+        public String String
+        {
+            get
+            {
+                return new String(CharArray);
+            }
+        }
+        public Int32 Length
+        {
+            get
+            {
+                return Count;
+            }
+        }
+
+        public SC2String() { }
+        public SC2String(String str) { Assign(str); }
+
+        public void Assign(String str)
+        {
+            Clear();
+            foreach (Char ch in str)
+            {
+                Add(new SC2Char(ch));
+            }
+            Add(new SC2Char('\0'));
+        }
     }
 
     // Main file
@@ -511,8 +633,8 @@ namespace libm3
 
     public class Model : SC2Object
     {
-        private String _name = "";
-        public String Name
+        private SC2String _name = new SC2String("");
+        public SC2String Name
         {
             get
             {
@@ -583,8 +705,8 @@ namespace libm3
                 _bones = value;
             }
         }
-        private SC2List<UInt16> _boneList = new SC2List<UInt16>();
-        public SC2List<UInt16> BoneList
+        private SC2List<SC2UInt16> _boneList = new SC2List<SC2UInt16>();
+        public SC2List<SC2UInt16> BoneList
         {
             get
             {
@@ -678,7 +800,7 @@ namespace libm3
             lstPos.Add(fs.Position);
             fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
 
-            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+            Name.Assign(Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1)));
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
             lstPos.RemoveAt(lstPos.Count - 1);
@@ -792,7 +914,7 @@ namespace libm3
             for (int i = 0; i < refBoneLookup.NumEntries; i++)
             {
                 UInt16 bone = br.ReadUInt16();
-                BoneList.Add(bone);
+                BoneList.Add(new SC2UInt16(bone));
             }
 
             fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
@@ -893,7 +1015,7 @@ namespace libm3
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
-
+            Name.GetRef().Write(fs, bw);
         }
 
         #endregion
@@ -1354,12 +1476,12 @@ namespace libm3
             types.Add(typeof(MaterialGroup), "MTAM");
             types.Add(typeof(Geometry), "_VID");
 
-            types.Add(typeof(UInt16), "_61U");
-            types.Add(typeof(UInt32), "_23U");
-            types.Add(typeof(Int16), "_61I");
-            types.Add(typeof(Int32), "_23I");
-            types.Add(typeof(Byte), "__8U");
-            types.Add(typeof(Char), "RAHC");
+            types.Add(typeof(SC2UInt16), "_61U");
+            types.Add(typeof(SC2UInt32), "_23U");
+            types.Add(typeof(SC2Int16), "_61I");
+            types.Add(typeof(SC2Int32), "_23I");
+            types.Add(typeof(SC2Byte), "__8U");
+            types.Add(typeof(SC2Char), "RAHC");
 
             return types[t];
         }
