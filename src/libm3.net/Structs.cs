@@ -33,398 +33,7 @@ using System.Xml.Linq;
 
 namespace libm3
 {
-    // Serialization
-    public static class XML
-    {
-        public static void Build(XmlDocument doc, Model model)
-        {
-            // Set locale for correct group separator
-            String originalCulture = CultureInfo.CurrentCulture.ToString();
-            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
-
-            // Do the XML
-            XmlElement el;
-            XmlNode root = doc.SelectSingleNode("/COLLADA");
-
-            // Write metadata
-            XmlNode asset = root.AppendChild(doc.CreateElement("asset"));
-            XmlNode created = asset.AppendChild(doc.CreateElement("created"));
-            created.AppendChild(doc.CreateTextNode(DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")));
-            XmlNode modified = asset.AppendChild(doc.CreateElement("modified"));
-            modified.AppendChild(doc.CreateTextNode(DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")));
-            XmlNode up_axis = asset.AppendChild(doc.CreateElement("up_axis"));
-            up_axis.AppendChild(doc.CreateTextNode("Y_UP"));
-
-            // Write data
-            root.AppendChild(doc.CreateElement("library_geometries"));
-            root.AppendChild(doc.CreateElement("library_visual_scenes")).AppendChild(doc.CreateElement("visual_scene"));
-            root.AppendChild(doc.CreateElement("scene"));
-            root.AppendChild(doc.CreateElement("library_effects"));
-            root.AppendChild(doc.CreateElement("library_materials"));
-            root.AppendChild(doc.CreateElement("library_controllers"));
-
-            el = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene");
-            el.SetAttribute("id", "RootNode");
-
-            Int32 count = 0;
-            foreach (Geoset set in model.Geosets)
-            {
-                XmlElement geometry = (XmlElement)doc.SelectSingleNode("/COLLADA/library_geometries").AppendChild(doc.CreateElement("geometry"));
-                geometry.SetAttribute("id", "geoset" + count);
-                XmlElement mesh = (XmlElement)geometry.AppendChild(doc.CreateElement("mesh"));
-                {
-                    // Position
-                    {
-                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
-                        source.SetAttribute("id", "geoset" + count + "_position");
-                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
-                        array.SetAttribute("id", "geoset" + count + "_position-array");
-                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 3));
-                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
-                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
-                        {
-                            values.AppendData(Convert.ToString(model.Vertices[i].Position.X) + " ");
-                            values.AppendData(Convert.ToString(model.Vertices[i].Position.Y) + " ");
-                            values.AppendData(Convert.ToString(model.Vertices[i].Position.Z) + "\r\n");
-                        }
-                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
-                        accessor.SetAttribute("source", "#geoset" + count + "_position-array");
-                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
-                        accessor.SetAttribute("stride", "3");
-                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "X");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "Y");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "Z");
-                        param.SetAttribute("type", "float");
-                    }
-
-                    // Normal
-                    {
-                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
-                        source.SetAttribute("id", "geoset" + count + "_normal");
-                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
-                        array.SetAttribute("id", "geoset" + count + "_normal-array");
-                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 3));
-                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
-                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
-                        {
-                            values.AppendData(Convert.ToString(model.Vertices[i].Normal.X) + " ");
-                            values.AppendData(Convert.ToString(model.Vertices[i].Normal.Y) + " ");
-                            values.AppendData(Convert.ToString(model.Vertices[i].Normal.Z) + "\r\n");
-                        }
-                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
-                        accessor.SetAttribute("source", "#geoset" + count + "_normal-array");
-                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
-                        accessor.SetAttribute("stride", "3");
-                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "X");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "Y");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "Z");
-                        param.SetAttribute("type", "float");
-                    }
-
-                    // UV
-                    {
-                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
-                        source.SetAttribute("id", "geoset" + count + "_uv");
-                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
-                        array.SetAttribute("id", "geoset" + count + "_uv-array");
-                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 2));
-                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
-                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
-                        {
-                            values.AppendData(Convert.ToString(model.Vertices[i].UV.X) + " ");
-                            values.AppendData(Convert.ToString(model.Vertices[i].UV.Y) + "\r\n");
-                        }
-                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
-                        accessor.SetAttribute("source", "#geoset" + count + "_uv-array");
-                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
-                        accessor.SetAttribute("stride", "2");
-                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "S");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "T");
-                        param.SetAttribute("type", "float");
-                    }
-
-                    // Tangents
-                    {
-                        XmlElement source = (XmlElement)mesh.AppendChild(doc.CreateElement("source"));
-                        source.SetAttribute("id", "geoset" + count + "_tangent");
-                        XmlElement array = (XmlElement)source.AppendChild(doc.CreateElement("float_array"));
-                        array.SetAttribute("id", "geoset" + count + "_tangent-array");
-                        array.SetAttribute("count", Convert.ToString(set.NumVertices * 2));
-                        XmlText values = (XmlText)array.AppendChild(doc.CreateTextNode("\r\n"));
-                        for (Int32 i = set.StartVertex; i < set.StartVertex + set.NumVertices; i++)
-                        {
-                            values.AppendData(Convert.ToString(model.Vertices[i].UV.X) + " ");
-                            values.AppendData(Convert.ToString(model.Vertices[i].UV.Y) + "\r\n");
-                        }
-                        XmlElement accessor = (XmlElement)source.AppendChild(doc.CreateElement("technique_common")).AppendChild(doc.CreateElement("accessor"));
-                        accessor.SetAttribute("source", "#geoset" + count + "_tangent-array");
-                        accessor.SetAttribute("count", Convert.ToString(set.NumVertices));
-                        accessor.SetAttribute("stride", "3");
-                        XmlElement param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "X");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "Y");
-                        param.SetAttribute("type", "float");
-                        param = (XmlElement)accessor.AppendChild(doc.CreateElement("param"));
-                        param.SetAttribute("name", "Z");
-                        param.SetAttribute("type", "float");
-                    }
-
-                    XmlElement vertices = (XmlElement)mesh.AppendChild(doc.CreateElement("vertices"));
-                    vertices.SetAttribute("id", "#geoset" + count + "_vertex");
-                    XmlElement input = (XmlElement)vertices.AppendChild(doc.CreateElement("input"));
-                    input.SetAttribute("semantic", "POSITION");
-                    input.SetAttribute("source", "#geoset" + count + "_position");
-                    XmlElement triangles = (XmlElement)mesh.AppendChild(doc.CreateElement("triangles"));
-                    triangles.SetAttribute("count", Convert.ToString(set.NumTriangles));
-                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
-                    input.SetAttribute("semantic", "VERTEX");
-                    input.SetAttribute("source", "#geoset" + count + "_vertex");
-                    input.SetAttribute("offset", "0");
-                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
-                    input.SetAttribute("semantic", "NORMAL");
-                    input.SetAttribute("source", "#geoset" + count + "_normal");
-                    input.SetAttribute("offset", "1");
-                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
-                    input.SetAttribute("semantic", "TEXCOORD");
-                    input.SetAttribute("source", "#geoset" + count + "_uv");
-                    input.SetAttribute("offset", "2");
-                    input = (XmlElement)triangles.AppendChild(doc.CreateElement("input"));
-                    input.SetAttribute("semantic", "TEXTANGENT");
-                    input.SetAttribute("source", "#geoset" + count + "_tangent");
-                    input.SetAttribute("offset", "3");
-                    XmlText p = (XmlText)triangles.AppendChild(doc.CreateElement("p")).AppendChild(doc.CreateTextNode("\r\n"));
-                    for (Int32 i = set.StartTriangle; i < set.StartTriangle + set.NumTriangles; i++)
-                    {
-                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][0] - set.StartVertex) + " ");
-
-                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][1] - set.StartVertex) + " ");
-
-                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + " ");
-                        p.AppendData(Convert.ToString(model.Faces[i][2] - set.StartVertex) + "\r\n");
-                    }
-                }
-                XmlElement node = (XmlElement)doc.SelectSingleNode("/COLLADA/library_visual_scenes/visual_scene").AppendChild(doc.CreateElement("node"));
-                node.SetAttribute("id", "geoset" + count + "_node");
-                XmlElement instance_geometry = (XmlElement)node.AppendChild(doc.CreateElement("instance_geometry"));
-                instance_geometry.SetAttribute("url", "#geoset" + count);
-                count++;
-            }
-
-            XmlElement instance_visual_scene = (XmlElement)doc.SelectSingleNode("/COLLADA/scene").AppendChild(doc.CreateElement("instance_visual_scene"));
-            instance_visual_scene.SetAttribute("url", "#RootNode");
-
-            // Restore the locale
-            Thread.CurrentThread.CurrentCulture = new CultureInfo(originalCulture);
-        }
-    }
-
-    public static class Serializer
-    {
-        private static List<SC2List<object>> _lists = new List<SC2List<object>>();
-        public static List<SC2List<object>> Lists
-        {
-            get
-            {
-                return _lists;
-            }
-            private set
-            {
-                _lists = value;
-            }
-        }
-
-        public static void Write(FileStream fs, BinaryWriter bw)
-        {
-            List<Tag> tags = new List<Tag>();
-            
-            // Write each list
-            foreach (SC2List<object> list in Lists)
-            {
-                if (list.Count == 0)
-                    continue;
-
-                // Make the tag
-                Tag t = new Tag(list[0].GetType(), (Int32)fs.Position, list.Count, 0);
-
-                // Write lists
-                foreach (object el in list)
-                {
-                    if (el as ISerializable != null)
-                    {
-                        (el as ISerializable).Write(fs, bw);
-                    }
-                }
-
-                // Add the tag
-                tags.Add(t);
-
-                // Add padding at end of chunk
-                if (fs.Position % 0x10 != 0)
-                {
-                    Int32 numBytes = 0x10 - (Int32)(fs.Position % 0x10);
-                    for (Int32 i = 0; i < numBytes; i++)
-                    {
-                        bw.Write((Byte)0xAA);
-                    }
-                }
-            }
-
-            // Write tags
-            foreach (Tag t in tags)
-            {
-                t.Write(fs, bw);
-            }
-        }
-        public static void RecursiveParse(ISerializable obj)
-        {
-            PropertyInfo[] props = obj.GetType().GetProperties();
-            foreach (PropertyInfo p in props)
-            {
-                if (p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(SC2List<>))
-                {
-                    object o = p.GetValue(obj, null);
-                    SC2List<object> list = (o as ISerializableList).GetList();
-
-                    Lists.Add(list);
-
-                    foreach (object el in list)
-                    {
-                        if(el as ISerializable != null)
-                            RecursiveParse(el as ISerializable);
-                    }
-                }
-                if (p.PropertyType == typeof(SC2String))
-                {
-                    object o = p.GetValue(obj, null);
-                    SC2List<object> list = new SC2List<object>();
-
-                    foreach (SC2Char el in o as SC2String)
-                    {
-                        list.Add(el);
-                    }
-
-                    Lists.Add(list);
-                }
-            }
-        }
-    }
-
-    // Base objects and interfaces
-    public class SC2UInt16 : ISerializable
-    {
-        public UInt16 Value { get; set; }
-
-        public SC2UInt16(UInt16 value) { Value = value; }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Value);
-        }
-
-        #endregion
-    }
-
-    public class SC2UInt32 : ISerializable
-    {
-        public UInt32 Value { get; set; }
-
-        public SC2UInt32(UInt32 value) { Value = value; }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Value);
-        }
-
-        #endregion
-    }
-    public class SC2Int16 : ISerializable
-    {
-        public Int16 Value { get; set; }
-
-        public SC2Int16(Int16 value) { Value = value; }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Value);
-        }
-
-        #endregion
-    }
-    public class SC2Int32 : ISerializable
-    {
-        public Int32 Value { get; set; }
-
-        public SC2Int32(Int32 value) { Value = value; }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Value);
-        }
-
-        #endregion
-    }
-    public class SC2Byte : ISerializable
-    {
-        public Byte Value { get; set; }
-
-        public SC2Byte(Byte value) { Value = value; }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Value);
-        }
-
-        #endregion
-    }
-    public class SC2Char : ISerializable
-    {
-        public Char Value { get; set; }
-
-        public SC2Char(Char value) { Value = value; }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Value);
-        }
-
-        #endregion
-    }
-
+    // Base object/interface
     public interface ISerializable
     {
         void Write(FileStream fs, BinaryWriter bw);
@@ -432,6 +41,8 @@ namespace libm3
 
     public abstract class SC2Object : ISerializable
     {
+        public virtual int ElementCount { get { return 1; } }
+
         public SC2Object() { }
 
         #region ISerializable Members
@@ -441,6 +52,100 @@ namespace libm3
         #endregion
     }
 
+    // Primitive objects
+    public class SC2UInt16 : SC2Object
+    {
+        public UInt16 Value { get; set; }
+
+        public SC2UInt16(UInt16 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+
+    public class SC2UInt32 : SC2Object
+    {
+        public UInt32 Value { get; set; }
+
+        public SC2UInt32(UInt32 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Int16 : SC2Object
+    {
+        public Int16 Value { get; set; }
+
+        public SC2Int16(Int16 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Int32 : SC2Object
+    {
+        public Int32 Value { get; set; }
+
+        public SC2Int32(Int32 value) { Value = value; }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Byte : SC2Object
+    {
+        public Byte Value { get; set; }
+
+        public SC2Byte(Byte value) { Value = value; }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+    public class SC2Char : SC2Object
+    {
+        public Char Value { get; set; }
+
+        public SC2Char(Char value) { Value = value; }
+
+        #region ISerializable Members
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            bw.Write(Value);
+        }
+
+        #endregion
+    }
+
+    // List/interface
     public interface ISerializableList
     {
         SC2List<object> GetList();
@@ -449,6 +154,19 @@ namespace libm3
 
     public class SC2List<T> : List<T>, ISerializableList
     {
+        public int ElementCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (object o in this)
+                    if (o as SC2Object != null)
+                        count += (o as SC2Object).ElementCount;
+
+                return count;
+            }
+        }
+
         public SC2List() { }
 
         #region ISerializableList Members
@@ -468,13 +186,16 @@ namespace libm3
         virtual public TagRef GetRef()
         {
             Int32 count = 0;
-            foreach (SC2List<object> obj in Serializer.Lists)
+            foreach (SC2List<object> list in Serializer.Lists)
             {
-                if (Count != 0)
+                if (list.Count == 0)
+                    continue;
+
+                if (Count != 0 && list[0] == this[0] as object)
                 {
                     TagRef t = new TagRef();
 
-                    t.NumEntries = obj.Count;
+                    t.NumEntries = list.ElementCount;
                     t.Tag = count;
 
                     return t;
@@ -488,6 +209,7 @@ namespace libm3
         #endregion
     }
 
+    // String
     public class SC2String : SC2List<SC2Char>
     {
         public SC2Char[] Array
@@ -554,7 +276,7 @@ namespace libm3
         }
     }
 
-    // Chunks
+    // Objects
     public class MD33 : SC2Object
     {
         private Char[] _magic = "33DM".ToCharArray();
@@ -777,8 +499,8 @@ namespace libm3
                 _extents = value;
             }
         }
-        private Double _radius = 0.0;
-        public Double Radius
+        private Single _radius = 0.0f;
+        public Single Radius
         {
             get
             {
@@ -807,6 +529,9 @@ namespace libm3
 
             // Read version
             Version = br.ReadUInt32();
+
+            // Disable the extra 4 bytes in vertices
+            Version &= 0x40000;
 
             // Skip a lot of data
             br.ReadBytes(0x2C);
@@ -977,7 +702,7 @@ namespace libm3
             doc.AppendChild(root);
 
             // Model
-            XML.Build(doc, this);
+            Serializer.XML(doc, this);
 
             // Set the namespace and version
             root.SetAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema");
@@ -996,14 +721,11 @@ namespace libm3
         {
             FileStream fs = new FileStream("D:\\test.m3", FileMode.Create);
             BinaryWriter bw = new BinaryWriter(fs);
-            
-            Tag tag;
-            TagRef tagref;
 
             M3 m = new M3();
 
             m.Header = new SC2List<MD33>();
-            m.Header.Add(new MD33(0x20, 1, new TagRef(0, 0)));
+            m.Header.Add(new MD33(0x20, 1, new TagRef(1, 1)));
             m.Model = new SC2List<Model>();
             m.Model.Add(this);
 
@@ -1015,7 +737,245 @@ namespace libm3
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
+            // Source file
             Name.GetRef().Write(fs, bw);
+
+            // Version
+            bw.Write(Version);
+
+            // SEQS
+            new TagRef(0, 0).Write(fs, bw);
+
+            // STC
+            new TagRef(0, 0).Write(fs, bw);
+
+            // STG
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown #1
+            bw.Write(0);
+
+            // Unknown #2
+            bw.Write(0);
+
+            // Unknown #3
+            bw.Write(0);
+
+            // STS
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Bones
+            Bones.GetRef().Write(fs, bw);
+
+            // Unknown #4
+            bw.Write(0);
+
+            // Flags
+            bw.Write(Flags);
+
+            // Vertices
+            Vertices.GetRef().Write(fs, bw);
+
+            // Geometry
+            Geometry.GetRef().Write(fs, bw);
+
+            // Bone table
+            BoneList.GetRef().Write(fs, bw);
+
+            // Extents
+            bw.Write(Extents[0].X);
+            bw.Write(Extents[0].Y);
+            bw.Write(Extents[0].Z);
+            bw.Write(Extents[1].X);
+            bw.Write(Extents[1].Y);
+            bw.Write(Extents[1].Z);
+            bw.Write(Radius);
+
+            // Unknown #5
+            bw.Write(0);
+
+            // Unknown #6
+            bw.Write(0);
+
+            // Unknown #7
+            bw.Write(0);
+
+            // Unknown #8
+            bw.Write(0);
+
+            // Unknown #9
+            bw.Write(0);
+
+            // Unknown #10
+            bw.Write(0);
+
+            // Unknown #11
+            bw.Write(0);
+
+            // Unknown #12
+            bw.Write(0);
+
+            // Unknown #13
+            bw.Write(0);
+
+            // Unknown #14
+            bw.Write(0);
+
+            // Unknown #15
+            bw.Write(0);
+
+            // Unknown #16
+            bw.Write(0);
+
+            // Unknown #17
+            bw.Write(0);
+
+            // Attachments
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Attachment table
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Lights
+            new TagRef(0, 0).Write(fs, bw);
+
+            // SHBX
+            // if(type == 23)
+            //     new TagRef(0, 0).Write(fs, bw);
+
+            // Cameras
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown reference #1
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Material groups
+            MaterialGroups.GetRef().Write(fs, bw);
+
+            // Materials
+            Materials.GetRef().Write(fs, bw);
+
+            // DIS
+            new TagRef(0, 0).Write(fs, bw);
+
+            // CMP
+            new TagRef(0, 0).Write(fs, bw);
+
+            // TER
+            new TagRef(0, 0).Write(fs, bw);
+
+            // VOL
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown #18
+            bw.Write(0);
+
+            // Unknown #19
+            bw.Write(0);
+
+            // CREP
+            new TagRef(0, 0).Write(fs, bw);
+
+            // PAR
+            new TagRef(0, 0).Write(fs, bw);
+
+            // PARC
+            new TagRef(0, 0).Write(fs, bw);
+
+            // RIB
+            new TagRef(0, 0).Write(fs, bw);
+
+            // PROJ
+            new TagRef(0, 0).Write(fs, bw);
+
+            // FOR
+            new TagRef(0, 0).Write(fs, bw);
+
+            // WRP
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown #20
+            bw.Write(0);
+
+            // Unknown #21
+            bw.Write(0);
+
+            // PHRB
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown #22
+            bw.Write(0);
+
+            // Unknown #23
+            bw.Write(0);
+
+            // Unknown #24
+            bw.Write(0);
+
+            // Unknown #25
+            bw.Write(0);
+
+            // Unknown #26
+            bw.Write(0);
+
+            // Unknown #27
+            bw.Write(0);
+
+            // IKJT
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown #28
+            bw.Write(0);
+
+            // Unknown #29
+            bw.Write(0);
+
+            // PATU
+            new TagRef(0, 0).Write(fs, bw);
+
+            // TRGD
+            new TagRef(0, 0).Write(fs, bw);
+
+            // IREF
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown reference #2
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Floats
+            for (Int32 i = 0; i < 23; i++)
+            {
+                bw.Write(1.0f);
+            }
+
+            // SSGS
+            new TagRef(0, 0).Write(fs, bw);
+
+            // ATVL
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown reference #3
+            // if(type == 23)
+            //     new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown reference #4
+            // if(type == 23)
+            //     new TagRef(0, 0).Write(fs, bw);
+
+            // BBSC
+            new TagRef(0, 0).Write(fs, bw);
+
+            // TDM
+            new TagRef(0, 0).Write(fs, bw);
+
+            // Unknown #30
+            bw.Write(0);
+
+            // Unknown #31
+            bw.Write(0);
+
+            // Unknown #32
+            bw.Write(0);
         }
 
         #endregion
@@ -1023,13 +983,14 @@ namespace libm3
 
     public class Vertex : SC2Object
     {
-        public UInt32 Flags;
         public Vector3F Position;
         public Vector4F Normal;
         public Vector2F UV;
         public Vector4F Tangent;
         public UInt32[] BoneIndex;
         public Single[] BoneWeight;
+
+        public override int ElementCount { get { return 32; } }
 
         public Vertex(BinaryReader br, UInt32 flags)
         {
@@ -1103,12 +1064,6 @@ namespace libm3
             bw.Write((Int16)(UV.X * 2048.0d));
             bw.Write((Int16)(-UV.Y * 2048.0d));
 
-            // Unknown
-            if ((Flags & 0x40000) != 0)
-            {
-                bw.Write(0);
-            }
-
             // Tangent
             bw.Write((Byte)(Byte.MaxValue * (Tangent.X + 1) / 2));
             bw.Write((Byte)(Byte.MaxValue * (Tangent.X + 1) / 2));
@@ -1134,6 +1089,8 @@ namespace libm3
                 _vertices[index] = value;
             }
         }
+
+        public override int ElementCount { get { return 3; } }
 
         public Face(BinaryReader br)
         {
@@ -1233,11 +1190,33 @@ namespace libm3
 
     public class Geometry : SC2Object
     {
-        public List<Geoset> Geosets;
-
-        public Geometry()
+        private SC2List<SC2UInt16> _faces = new SC2List<SC2UInt16>();
+        public SC2List<SC2UInt16> Faces
         {
-            Geosets = new List<Geoset>();
+            get
+            {
+                return _faces;
+            }
+            private set
+            {
+                _faces = value;
+            }
+        }
+        private SC2List<Geoset> _geosets = new SC2List<Geoset>();
+        public SC2List<Geoset> Geosets
+        {
+            get
+            {
+                return _geosets;
+            }
+            private set
+            {
+                _geosets = value;
+            }
+        }
+
+        public Geometry(FileStream fs, BinaryReader br, List<Tag> tags)
+        {
         }
 
         #region ISerializable Members
@@ -1397,139 +1376,5 @@ namespace libm3
         }
 
         #endregion
-    }
-
-
-    // References
-    public struct AnimRef
-    {
-        public UInt32 Flags;
-        public UInt32 AnimId;
-
-        public AnimRef(BinaryReader br)
-        {
-            Flags = br.ReadUInt32();
-            AnimId = br.ReadUInt32();
-        }
-        public AnimRef(UInt32 animId, UInt32 flags)
-        {
-            Flags = flags;
-            AnimId = animId;
-        }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Flags);
-            bw.Write(AnimId);
-        }
-
-        #endregion
-    }
-
-    public struct TagRef
-    {
-        public Int32 NumEntries;
-        public Int32 Tag;
-
-        public TagRef(BinaryReader br)
-        {
-            NumEntries = br.ReadInt32();
-            Tag = br.ReadInt32();
-        }
-        public TagRef(Int32 numEntries, Int32 tag)
-        {
-            NumEntries = numEntries;
-            Tag = tag;
-        }
-
-        #region ISerializable Members
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(NumEntries);
-            bw.Write(Tag);
-        }
-
-        #endregion
-    }
-
-    public struct Tag
-    {
-        public String Id;
-        public Int32 Offset;
-        public Int32 NumEntries;
-        public UInt32 Type;
-
-        public static String GetId(Type t)
-        {
-            Dictionary<Type, String> types = new Dictionary<Type, String>();
-
-            types.Add(typeof(MD33), "33DM");
-            types.Add(typeof(Model), "LDOM");
-            types.Add(typeof(Vertex), "__8U");
-            types.Add(typeof(Face), "_61U");
-            types.Add(typeof(Bone), "ENOB");
-            types.Add(typeof(Geoset), "NGER");
-            types.Add(typeof(Material), "_TAM");
-            types.Add(typeof(MaterialGroup), "MTAM");
-            types.Add(typeof(Geometry), "_VID");
-
-            types.Add(typeof(SC2UInt16), "_61U");
-            types.Add(typeof(SC2UInt32), "_23U");
-            types.Add(typeof(SC2Int16), "_61I");
-            types.Add(typeof(SC2Int32), "_23I");
-            types.Add(typeof(SC2Byte), "__8U");
-            types.Add(typeof(SC2Char), "RAHC");
-
-            return types[t];
-        }
-        public static Int32 GetSize(Type t)
-        {
-            Dictionary<Type, Int32> types = new Dictionary<Type, Int32>();
-
-            types.Add(typeof(MD33), 20);
-            types.Add(typeof(Model), 0);
-            types.Add(typeof(Vertex), 1);
-            types.Add(typeof(Face), 2);
-            types.Add(typeof(Bone), 156);
-            types.Add(typeof(Geoset), 28);
-            types.Add(typeof(Material), 212);
-            types.Add(typeof(MaterialGroup), 8);
-            types.Add(typeof(Geometry), 32);
-
-            types.Add(typeof(UInt16), 2);
-            types.Add(typeof(UInt32), 4);
-            types.Add(typeof(Int16), 2);
-            types.Add(typeof(Int32), 4);
-            types.Add(typeof(Byte), 1);
-            types.Add(typeof(Char), 1);
-
-            return types[t];
-        }
-
-        public Tag(BinaryReader br)
-        {
-            Id = Encoding.ASCII.GetString(br.ReadBytes(4));
-            Offset = br.ReadInt32();
-            NumEntries = br.ReadInt32();
-            Type = br.ReadUInt32();
-        }
-        public Tag(Type t, Int32 offset, Int32 numEntries, UInt32 type)
-        {
-            Id = GetId(t);
-            Offset = offset;
-            NumEntries = numEntries;
-            Type = type;
-        }
-
-        public void Write(FileStream fs, BinaryWriter bw)
-        {
-            bw.Write(Id.ToCharArray(0, 4));
-            bw.Write(Offset);
-            bw.Write(NumEntries);
-            bw.Write(Type);
-        }
     }
 }

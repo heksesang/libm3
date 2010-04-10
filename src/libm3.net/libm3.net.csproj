@@ -48,6 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="References.cs" />
+    <Compile Include="Serialization.cs" />
     <Compile Include="Structs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
