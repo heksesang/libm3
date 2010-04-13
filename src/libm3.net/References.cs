@@ -101,7 +101,6 @@ namespace libm3
             types.Add(typeof(MD33), "33DM");
             types.Add(typeof(Model), "LDOM");
             types.Add(typeof(Vertex), "__8U");
-            types.Add(typeof(Face), "_61U");
             types.Add(typeof(Bone), "ENOB");
             types.Add(typeof(Geoset), "NGER");
             types.Add(typeof(Material), "_TAM");

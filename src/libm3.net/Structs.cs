@@ -42,6 +42,7 @@ namespace libm3
     public abstract class SC2Object : ISerializable
     {
         public virtual int ElementCount { get { return 1; } }
+        public UInt32 Type = 0;
 
         public SC2Object() { }
 
@@ -367,6 +368,7 @@ namespace libm3
                 _name = value;
             }
         }
+
         private UInt32 _version = 3411;
         public UInt32 Version
         {
@@ -379,6 +381,7 @@ namespace libm3
                 _version = value;
             }
         }
+
         private UInt32 _flags = 0;
         public UInt32 Flags
         {
@@ -391,6 +394,7 @@ namespace libm3
                 _flags = value;
             }
         }
+
         private SC2List<Vertex> _vertices = new SC2List<Vertex>();
         public SC2List<Vertex> Vertices
         {
@@ -403,18 +407,7 @@ namespace libm3
                 _vertices = value;
             }
         }
-        private SC2List<Face> _faces = new SC2List<Face>();
-        public SC2List<Face> Faces
-        {
-            get
-            {
-                return _faces;
-            }
-            private set
-            {
-                _faces = value;
-            }
-        }
+
         private SC2List<Bone> _bones = new SC2List<Bone>();
         public SC2List<Bone> Bones
         {
@@ -427,6 +420,20 @@ namespace libm3
                 _bones = value;
             }
         }
+
+        private UInt32 _nVisibleBones = 0;
+        public UInt32 NumVisibleBones
+        {
+            get
+            {
+                return _nVisibleBones;
+            }
+            set
+            {
+                _nVisibleBones = value;
+            }
+        }
+
         private SC2List<SC2UInt16> _boneList = new SC2List<SC2UInt16>();
         public SC2List<SC2UInt16> BoneList
         {
@@ -439,6 +446,7 @@ namespace libm3
                 _boneList = value;
             }
         }
+
         private SC2List<Geometry> _geometry = new SC2List<Geometry>();
         public SC2List<Geometry> Geometry
         {
@@ -451,18 +459,7 @@ namespace libm3
                 _geometry = value;
             }
         }
-        private SC2List<Geoset> _geosets = new SC2List<Geoset>();
-        public SC2List<Geoset> Geosets
-        {
-            get
-            {
-                return _geosets;
-            }
-            private set
-            {
-                _geosets = value;
-            }
-        }
+
         private SC2List<Material> _materials = new SC2List<Material>();
         public SC2List<Material> Materials
         {
@@ -475,6 +472,7 @@ namespace libm3
                 _materials = value;
             }
         }
+
         private SC2List<MaterialGroup> _materialGroups = new SC2List<MaterialGroup>();
         public SC2List<MaterialGroup> MaterialGroups
         {
@@ -487,6 +485,7 @@ namespace libm3
                 _materialGroups = value;
             }
         }
+
         private Vector3F[] _extents = new Vector3F[2];
         public Vector3F[] Extents
         {
@@ -499,6 +498,7 @@ namespace libm3
                 _extents = value;
             }
         }
+
         private Single _radius = 0.0f;
         public Single Radius
         {
@@ -514,136 +514,69 @@ namespace libm3
 
         public Model(FileStream fs, BinaryReader br, UInt32 type, List<Tag> tags)
         {
-            List<Int64> lstPos = new List<Int64>();
+            Type = type;
 
-            // Read name
-            TagRef refName = new TagRef(br);
+            TagRef refName;
+            TagRef refVerts;
+            TagRef refBones;
+            TagRef refBoneList;
+            TagRef refGeo;
+            TagRef refAtt;
+            TagRef refAttList;
+            TagRef refLights;
+            TagRef refSHBX;
+            TagRef refCam;
+            TagRef refUnk;
+            TagRef refMats;
+            TagRef refMatM;
 
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
-
-            Name.Assign(Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1)));
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
+            // Read name ref
+            refName = new TagRef(br);
 
             // Read version
             Version = br.ReadUInt32();
 
-            // Disable the extra 4 bytes in vertices
-            Version &= 0x40000;
+            // Skip SEQS
+            br.ReadBytes(0x08);
 
-            // Skip a lot of data
-            br.ReadBytes(0x2C);
+            // Skip STC
+            br.ReadBytes(0x08);
 
-            // Read bones
-            TagRef refBone = new TagRef(br);
+            // Skip STG
+            br.ReadBytes(0x08);
 
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refBone.Tag].Offset, SeekOrigin.Begin);
-
-            for (int i = 0; i < refBone.NumEntries; i++ )
-            {
-                Bones.Add(new Bone(fs, br, tags));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            // Skip an integer
+            // Unknown #1
             br.ReadBytes(4);
+
+            // Unknown #2
+            br.ReadBytes(4);
+
+            // Unknown #3
+            br.ReadBytes(4);
+
+            // Skip STS
+            br.ReadBytes(0x08);
+
+            // Read bone ref
+            refBones = new TagRef(br);
+
+            // Number of visible bones
+            NumVisibleBones = br.ReadUInt32();
 
             // Read flags
             Flags = br.ReadUInt32();
 
+            // Disable the extra 4 bytes in vertices
+            Flags &= 0x40000;
+
             // Read vertices
-            TagRef refVertex = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refVertex.Tag].Offset, SeekOrigin.Begin);
-
-            while (tags[refVertex.Tag].Offset + tags[refVertex.Tag].NumEntries != fs.Position)
-            {
-                Vertices.Add(new Vertex(br, Flags));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
+            refVerts = new TagRef(br);
 
             // Geometry
-            TagRef refDiv = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refDiv.Tag].Offset, SeekOrigin.Begin);
-
-            TagRef refFace = new TagRef(br);
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refFace.Tag].Offset, SeekOrigin.Begin);
-
-            for (int i = 0; i < refFace.NumEntries; i+=3)
-            {
-                Faces.Add(new Face(br));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            TagRef refGeoset = new TagRef(br);
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refGeoset.Tag].Offset, SeekOrigin.Begin);
-
-            for (int i = 0; i < refGeoset.NumEntries; i++)
-            {
-                Geosets.Add(new Geoset(br));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            TagRef refMatBind = new TagRef(br);
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refMatBind.Tag].Offset, SeekOrigin.Begin);
-
-            for (int i = 0; i < refMatBind.NumEntries; i++)
-            {
-                // Skip 4 bytes
-                br.ReadBytes(4);
-                
-                // Read geoid
-                UInt16 geoid = br.ReadUInt16();
-
-                // Skip 4 bytes
-                br.ReadBytes(4);
-
-                // Read material id
-                UInt16 matid = br.ReadUInt16();
-
-                // Skip 2 bytes
-                br.ReadBytes(2);
-
-                Geosets[geoid].MaterialGroup = matid;
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
+            refGeo = new TagRef(br);
 
             // Bone lookup
-            TagRef refBoneLookup = new TagRef(br);
-
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refBoneLookup.Tag].Offset, SeekOrigin.Begin);
-
-            for (int i = 0; i < refBoneLookup.NumEntries; i++)
-            {
-                UInt16 bone = br.ReadUInt16();
-                BoneList.Add(new SC2UInt16(bone));
-            }
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
+            refBoneList = new TagRef(br);
 
             // Read vertex extents
             for (Int32 i = 0; i < 2; i++)
@@ -654,38 +587,134 @@ namespace libm3
             }
             Radius = br.ReadSingle();
 
-            // Skip a lot of data
-            br.ReadBytes(0x5C);
+            // Unknown #4
+            br.ReadBytes(4);
 
-            if (type == 23)
-                br.ReadBytes(0x08);
+            // Unknown #5
+            br.ReadBytes(4);
+
+            // Unknown #6
+            br.ReadBytes(4);
+
+            // Unknown #7
+            br.ReadBytes(4);
+
+            // Unknown #8
+            br.ReadBytes(4);
+
+            // Unknown #9
+            br.ReadBytes(4);
+
+            // Unknown #10
+            br.ReadBytes(4);
+
+            // Unknown #11
+            br.ReadBytes(4);
+
+            // Unknown #12
+            br.ReadBytes(4);
+
+            // Unknown #13
+            br.ReadBytes(4);
+
+            // Unknown #14
+            br.ReadBytes(4);
+
+            // Unknown #15
+            br.ReadBytes(4);
+
+            // Unknown #16
+            br.ReadBytes(4);
+
+            // Attachment reference
+            refAtt = new TagRef(br);
+
+            // Attachment list reference
+            refAttList = new TagRef(br);
+
+            // Light reference
+            refLights = new TagRef(br);
+
+            // SHBX reference
+            if (Type == 23)
+                refSHBX = new TagRef(br);
+
+            // Camera reference
+            refCam = new TagRef(br);
+
+            // Unknown reference #1
+            refUnk = new TagRef(br);
 
             // Materials
-            TagRef refMatGroups = new TagRef(br);
+            refMatM = new TagRef(br);
+            refMats = new TagRef(br);
 
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refMatGroups.Tag].Offset, SeekOrigin.Begin);
+            // Parse references
+            long lPos = fs.Position;
 
-            for (Int32 i = 0; i < refMatGroups.NumEntries; i++)
+            if (refName.NumEntries != 0)
             {
-                MaterialGroups.Add(new MaterialGroup(fs, br));
+                fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+                Name.Assign( Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1)) );
             }
 
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
-            TagRef refMats = new TagRef(br);
-            
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refMats.Tag].Offset, SeekOrigin.Begin);
-
-            for (Int32 i = 0; i < refMats.NumEntries; i++)
+            if (refBones.NumEntries != 0)
             {
-                Materials.Add(new Material(fs, br, tags));
+                fs.Seek(tags[refBones.Tag].Offset, SeekOrigin.Begin);
+                for (int i = 0; i < refBones.NumEntries; i++)
+                {
+                    Bones.Add(new Bone(fs, br, tags));
+                }
             }
 
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
+            if (refVerts.NumEntries != 0)
+            {
+                fs.Seek(tags[refVerts.Tag].Offset, SeekOrigin.Begin);
+                while (tags[refVerts.Tag].Offset + tags[refVerts.Tag].NumEntries > fs.Position)
+                {
+                    Vertices.Add(new Vertex(br, Flags));
+                }
+            }
+
+            if (refGeo.NumEntries != 0)
+            {
+                fs.Seek(tags[refGeo.Tag].Offset, SeekOrigin.Begin);
+                for (int i = 0; i < refGeo.NumEntries; i++)
+                {
+                    Geometry geo = new Geometry(fs, br, tags);
+                    Geometry.Add(geo);
+                }
+            }
+
+            if (refBoneList.NumEntries != 0)
+            {
+                fs.Seek(tags[refBoneList.Tag].Offset, SeekOrigin.Begin);
+                for (int i = 0; i < refBoneList.NumEntries; i++)
+                {
+                    UInt16 bone = br.ReadUInt16();
+                    BoneList.Add(new SC2UInt16(bone));
+                }
+            }
+
+            if (refMatM.NumEntries != 0)
+            {
+                fs.Seek(tags[refMatM.Tag].Offset, SeekOrigin.Begin);
+                for (Int32 i = 0; i < refMatM.NumEntries; i++)
+                {
+                    MaterialGroups.Add(new MaterialGroup(fs, br));
+                }
+            }
+
+            if (refMats.NumEntries != 0)
+            {
+                fs.Seek(tags[refMats.Tag].Offset, SeekOrigin.Begin);
+                for (Int32 i = 0; i < refMats.NumEntries; i++)
+                {
+                    Materials.Add(new Material(fs, br, tags));
+                }
+            }
+
+            fs.Seek(lPos, SeekOrigin.Begin);
         }
 
         public void ToXML()
@@ -732,8 +761,6 @@ namespace libm3
             Serializer.RecursiveParse(m);
             Serializer.Write(fs, bw);
         }
-
-        #region ISerializable Members
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
@@ -977,8 +1004,6 @@ namespace libm3
             // Unknown #32
             bw.Write(0);
         }
-
-        #endregion
     }
 
     public class Vertex : SC2Object
@@ -1033,8 +1058,7 @@ namespace libm3
             Tangent.Z = 2 * br.ReadByte() / 255.0f - 1;
             Tangent.W = br.ReadByte() / 255.0f;
         }
-
-        #region ISerializable Members
+        public Vertex() { }
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
@@ -1070,48 +1094,6 @@ namespace libm3
             bw.Write((Byte)(Byte.MaxValue * (Tangent.X + 1) / 2));
             bw.Write((Byte)(Byte.MaxValue * Tangent.X));
         }
-
-        #endregion
-    }
-
-    public class Face : SC2Object
-    {
-        private Int16[] _vertices = new Int16[3];
-        public Int16 this[int index]
-        {
-            get
-            {
-                return _vertices[index];
-            }
-
-            set
-            {
-                _vertices[index] = value;
-            }
-        }
-
-        public override int ElementCount { get { return 3; } }
-
-        public Face(BinaryReader br)
-        {
-            for (Int16 i = 0; i < 3; i++)
-            {
-                _vertices[i] = br.ReadInt16();
-            }
-        }
-        public Face() { }
-
-        #region ISerializable Members
-
-        public override void Write(FileStream fs, BinaryWriter bw)
-        {
-            for (Int32 i = 0; i < 3; i++)
-            {
-                bw.Write(_vertices[i]);
-            }
-        }
-
-        #endregion
     }
 
     public class Bone : SC2Object
@@ -1128,17 +1110,13 @@ namespace libm3
 
         public Bone(FileStream fs, BinaryReader br, List<Tag> tags)
         {
-            Int64 lCurrentPos;
+            TagRef refName;
 
             // Skip first integer
             br.ReadBytes(4);
 
             // Name
-            TagRef refName = new TagRef(br);
-            lCurrentPos = fs.Position;
-            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
-            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
-            fs.Seek(lCurrentPos, SeekOrigin.Begin);
+            refName = new TagRef(br);
 
             // Flags
             Flags = br.ReadUInt32();
@@ -1176,16 +1154,20 @@ namespace libm3
 
             // Skip data
             br.ReadBytes(0x24);
+
+            // Parse references
+            long lPos = fs.Position;
+
+            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
+
+            fs.Seek(lPos, SeekOrigin.Begin);
         }
         public Bone() { }
-
-        #region ISerializable Members
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
         }
-
-        #endregion
     }
 
     public class Geometry : SC2Object
@@ -1202,6 +1184,7 @@ namespace libm3
                 _faces = value;
             }
         }
+
         private SC2List<Geoset> _geosets = new SC2List<Geoset>();
         public SC2List<Geoset> Geosets
         {
@@ -1215,115 +1198,373 @@ namespace libm3
             }
         }
 
-        public Geometry(FileStream fs, BinaryReader br, List<Tag> tags)
+        private SC2List<RenderParams> _render = new SC2List<RenderParams>();
+        public SC2List<RenderParams> RenderSettings
         {
+            get
+            {
+                return _render;
+            }
+            private set
+            {
+                _render = value;
+            }
         }
 
-        #region ISerializable Members
+        private SC2List<MSEC> _msec = new SC2List<MSEC>();
+        public SC2List<MSEC> MSEC
+        {
+            get
+            {
+                return _msec;
+            }
+            private set
+            {
+                _msec = value;
+            }
+        }
+
+        public Geometry(FileStream fs, BinaryReader br, List<Tag> tags)
+        {
+            TagRef refFaces = new TagRef(br);
+            TagRef refGeosets = new TagRef(br);
+            TagRef refRender = new TagRef(br);
+            TagRef refMSEC = new TagRef(br);
+
+            // Read refs
+            long lPos = fs.Position;
+
+            fs.Seek(tags[refFaces.Tag].Offset, SeekOrigin.Begin);
+            for (int i = 0; i < refFaces.NumEntries; i++)
+            {
+                SC2UInt16 face = new SC2UInt16(br.ReadUInt16());
+                Faces.Add(face);
+            }
+
+            fs.Seek(tags[refGeosets.Tag].Offset, SeekOrigin.Begin);
+            for (int i = 0; i < refGeosets.NumEntries; i++)
+            {
+                Geoset geo = new Geoset(fs, br);
+                Geosets.Add(geo);
+            }
+
+            fs.Seek(tags[refRender.Tag].Offset, SeekOrigin.Begin);
+            for (int i = 0; i < refRender.NumEntries; i++)
+            {
+                RenderParams param = new RenderParams(fs, br);
+                RenderSettings.Add(param);
+            }
+
+            fs.Seek(tags[refMSEC.Tag].Offset, SeekOrigin.Begin);
+            for (int i = 0; i < refMSEC.NumEntries; i++)
+            {
+                MSEC msec = new MSEC(fs, br);
+                MSEC.Add(msec);
+            }
+
+            fs.Seek(lPos, SeekOrigin.Begin);
+        }
+        public Geometry() { }
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
+            Faces.GetRef().Write(fs, bw);
+            Geosets.GetRef().Write(fs, bw);
+            RenderSettings.GetRef().Write(fs, bw);
+            MSEC.GetRef().Write(fs, bw);
         }
-
-        #endregion
     }
 
     public class Geoset : SC2Object
     {
-        public Int32 Type;
-        public Int32 StartVertex;
-        public Int32 NumVertices;
-        public Int32 StartTriangle;
-        public Int32 NumTriangles;
-        public Int32 MaterialGroup;
-
-        public Geoset(BinaryReader br)
+        public UInt32 Unknown;
+        public UInt16 StartVertex;
+        public UInt16 NumVertices;
+        public UInt32 StartTriangle;
+        public UInt32 NumTriangles;
+        public UInt16 BoneCount;
+        public UInt16 StartBone;
+        public UInt16 NumBones;
+        public UInt16 RootBone;
+        public Byte[] Unknowns = new Byte[4];
+        
+        public Geoset(FileStream fs, BinaryReader br)
         {
-            Type = br.ReadInt32();
+            Unknown = br.ReadUInt32();
             StartVertex = br.ReadUInt16();
             NumVertices = br.ReadUInt16();
-            StartTriangle = br.ReadInt32() / 3;
-            NumTriangles = br.ReadInt32() / 3;
+            StartTriangle = br.ReadUInt32();
+            NumTriangles = br.ReadUInt32();
+            BoneCount = br.ReadUInt16();
+            StartBone = br.ReadUInt16();
+            NumBones = br.ReadUInt16();
+            RootBone = br.ReadUInt16();
 
-            // Skip a lot of data
-            br.ReadBytes(0x0C);
+            for (UInt32 i = 0; i < 4; i++)
+            {
+                Unknowns[i] = br.ReadByte();
+            }
         }
         public Geoset() { }
-        
-        public void Write(BinaryWriter bw)
-        {
-        }
-
-        #region ISerializable Members
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
+            bw.Write(Unknown);
+            bw.Write(StartVertex);
+            bw.Write(NumVertices);
+            bw.Write(StartTriangle);
+            bw.Write(NumTriangles);
+            bw.Write(BoneCount);
+            bw.Write(StartBone);
+            bw.Write(NumBones);
+            bw.Write(RootBone);
+
+            foreach (Byte b in Unknowns)
+            {
+                bw.Write(b);
+            }
+        }
+    }
+
+    public class RenderParams : SC2Object
+    {
+        private Int16[] _params = new Int16[7];
+        public Int16 this[int index]
+        {
+            get
+            {
+                return _params[index];
+            }
+            set
+            {
+                _params[index] = value;
+            }
         }
 
-        #endregion
+        public RenderParams(FileStream fs, BinaryReader br)
+        {
+            for (Int32 i = 0; i < 7; i++)
+            {
+                _params[i] = br.ReadInt16();
+            }
+        }
+        public RenderParams() { }
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            foreach (Int16 param in _params)
+            {
+                bw.Write(param);
+            }
+        }
+    }
+
+    public class MSEC : SC2Object
+    {
+        private AnimRef _extents = new AnimRef();
+        public AnimRef AnimatedExtents
+        {
+            get
+            {
+                return _extents;
+            }
+            private set
+            {
+                _extents = value;
+            }
+        }
+        
+        private Vector3F[] _initExtents = new Vector3F[2];
+        private Single _radius = 0.0f;
+        public Vector3F[] InitialExtents
+        {
+            get
+            {
+                return _initExtents;
+            }
+            private set
+            {
+                _initExtents = value;
+            }
+        }
+        public Single Radius
+        {
+            get
+            {
+                return _radius;
+            }
+            set
+            {
+                _radius = value;
+            }
+        }
+
+        private UInt32[] _unknowns = new UInt32[8];
+        public UInt32[] Unknowns
+        {
+            get
+            {
+                return _unknowns;
+            }
+            private set
+            {
+                _unknowns = value;
+            }
+        }
+
+        public MSEC(FileStream fs, BinaryReader br)
+        {
+            // Skip first few bytes
+            br.ReadBytes(4);
+
+            // Animated extents
+            AnimatedExtents = new AnimRef(br);
+
+            // Initial extents
+            InitialExtents[0][0] = br.ReadSingle();
+            InitialExtents[0][1] = br.ReadSingle();
+            InitialExtents[0][2] = br.ReadSingle();
+            InitialExtents[1][0] = br.ReadSingle();
+            InitialExtents[1][1] = br.ReadSingle();
+            InitialExtents[1][2] = br.ReadSingle();
+            Radius = br.ReadSingle();
+
+            for (Int32 i = 0; i < 8; i++)
+            {
+                _unknowns[i] = br.ReadUInt32();
+            }
+        }
+        public MSEC() { }
+
+        public override void Write(FileStream fs, BinaryWriter bw)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class Material : SC2Object
     {
-        public String Name;
-        public List<Layer> Layers;
-        public Vector2D Coords;
+        private SC2String _name = new SC2String();
+        public SC2String Name
+        {
+            get
+            {
+                return _name;
+            }
+            private set
+            {
+                _name = value;
+            }
+        }
+
+        private SC2List<Layer> _layers = new SC2List<Layer>();
+        public SC2List<Layer> Layers
+        {
+            get
+            {
+                return _layers;
+            }
+            private set
+            {
+                _layers = value;
+            }
+        }
+
+        public Vector2F _scale = new Vector2F();
+        public Vector2F Scale
+        {
+            get
+            {
+                return _scale;
+            }
+            set
+            {
+                _scale = value;
+            }
+        }
 
         public Material(FileStream fs, BinaryReader br, List<Tag> tags)
-        {
-            Layers = new List<Layer>();
-            List<Int64> lstPos = new List<Int64>();
+        {            
+            TagRef refName;
+            TagRef[] refLayers = new TagRef[13];
 
             // Name
-            TagRef refName = new TagRef(br);
-
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
-
-            Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
+            refName = new TagRef(br);
 
             // Skip data
             br.ReadBytes(0x20);
 
             // Coords?
-            Coords.X = br.ReadSingle();
-            Coords.Y = br.ReadSingle();
+            Vector2F scale = new Vector2F();
+            scale.X = br.ReadSingle();
+            scale.Y = br.ReadSingle();
+
+            Scale = scale;
 
             // Layers
             for (Int32 i = 0; i < 13; i++)
             {
-                TagRef refLayer = new TagRef(br);
-
-                lstPos.Add(fs.Position);
-                fs.Seek(tags[refLayer.Tag].Offset, SeekOrigin.Begin);
-
-                Layers.Add(new Layer(fs, br, tags));
-
-                fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-                lstPos.RemoveAt(lstPos.Count - 1);
+                refLayers[i] = new TagRef(br);
             }
 
             // Skip a lot of data
             br.ReadBytes(0x3C);
-        }
-        public Material() { Layers = new List<Layer>(); }
 
-        #region ISerializable Members
+            // Parse references
+            long lPos = fs.Position;
+
+            if (refName.NumEntries != 0)
+            {
+                fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+                Name.Assign(Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1)));
+            }
+
+            foreach (TagRef layer in refLayers)
+            {
+                if (layer.NumEntries != 0)
+                {
+                    fs.Seek(tags[layer.Tag].Offset, SeekOrigin.Begin);
+                    Layers.Add(new Layer(fs, br, tags));
+                }
+            }
+
+            fs.Seek(lPos, SeekOrigin.Begin);
+        }
+        public Material() { }
 
         public override void Write(FileStream fs, BinaryWriter bw)
         {
+            throw new NotImplementedException();
         }
-
-        #endregion
     }
 
     public class MaterialGroup : SC2Object
     {
-        public UInt32 Index;
-        public UInt32 Num;
+        private UInt32 _index = 0;
+        public UInt32 Index
+        {
+            get
+            {
+                return _index;
+            }
+            set
+            {
+                _index = value;
+            }
+        }
+
+        private UInt32 _num = 0;
+        public UInt32 Num
+        {
+            get
+            {
+                return _num;
+            }
+            set
+            {
+                _num = value;
+            }
+        }
 
         public MaterialGroup(FileStream fs, BinaryReader br)
         {
@@ -1332,49 +1573,56 @@ namespace libm3
         }
         public MaterialGroup() { }
 
-        #region ISerializable Members
-
         public override void Write(FileStream fs, BinaryWriter bw)
         {
+            throw new NotImplementedException();
         }
-
-        #endregion
     }
 
     public class Layer : SC2Object
     {
-        public String Name;
+        private SC2String _name = new SC2String();
+        public SC2String Name
+        {
+            get
+            {
+                return _name;
+            }
+            set
+            {
+                _name = value;
+            }
+        }
 
         public Layer(FileStream fs, BinaryReader br, List<Tag> tags)
         {
-            List<Int64> lstPos = new List<Int64>();
+            TagRef refName;
 
             // Skip unknown value
             br.ReadInt32();
 
             // Name
-            TagRef refName = new TagRef(br);
+            refName = new TagRef(br);
             
-            lstPos.Add(fs.Position);
-            fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
-
-            if(tags[refName.Tag].Id == "RAHC")
-                Name = Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1));
-
-            fs.Seek(lstPos[lstPos.Count - 1], SeekOrigin.Begin);
-            lstPos.RemoveAt(lstPos.Count - 1);
-
             // Skip a lot of data
             br.ReadBytes(0x154);
+
+            // Parse references
+            long lPos = fs.Position;
+
+            if (refName.NumEntries != 0)
+            {
+                fs.Seek(tags[refName.Tag].Offset, SeekOrigin.Begin);
+                Name.Assign( Encoding.ASCII.GetString(br.ReadBytes(refName.NumEntries - 1)) );
+            }
+
+            fs.Seek(lPos, SeekOrigin.Begin);
         }
         public Layer() { }
 
-        #region ISerializable Members
-
         public override void Write(FileStream fs, BinaryWriter bw)
         {
+            throw new NotImplementedException();
         }
-
-        #endregion
     }
 }

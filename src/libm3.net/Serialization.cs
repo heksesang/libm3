@@ -145,7 +145,7 @@ namespace libm3
         }
 
         public static void XML(XmlDocument doc, Model model)
-        {
+        {/*
             // Set locale for correct group separator
             String originalCulture = CultureInfo.CurrentCulture.ToString();
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
@@ -345,7 +345,7 @@ namespace libm3
             instance_visual_scene.SetAttribute("url", "#RootNode");
 
             // Restore the locale
-            Thread.CurrentThread.CurrentCulture = new CultureInfo(originalCulture);
+            Thread.CurrentThread.CurrentCulture = new CultureInfo(originalCulture);*/
         }
     }
 }
