@@ -739,7 +739,7 @@ namespace libm3
 
             try
             {
-                doc.Save("C:\\Release\\test.xml");
+                doc.Save("D:\\test.xml");
             }
             catch (Exception e)
             {
